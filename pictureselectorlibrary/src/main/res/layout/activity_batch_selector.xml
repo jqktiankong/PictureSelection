@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <RelativeLayout
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary">
+
+        <LinearLayout
+            android:id="@+id/back"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="@dimen/margin_10dp"
+                android:src="@drawable/icon_back" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="@dimen/margin_10dp"
+                android:text="图片"
+                android:textColor="@color/white"
+                android:textSize="@dimen/text_size_medium" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/define"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:layout_marginBottom="@dimen/margin_10dp"
+            android:layout_marginRight="@dimen/margin_10dp"
+            android:layout_marginTop="@dimen/margin_10dp"
+            android:background="@drawable/bg_button"
+            android:text="确定"
+            android:textColor="@color/white" />
+
+    </RelativeLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/toolbar">
+
+        <RelativeLayout
+            android:id="@+id/contentView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_above="@+id/bottomMenu">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/allPicture"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/black">
+
+                </androidx.recyclerview.widget.RecyclerView>
+
+                <FrameLayout
+                    android:id="@+id/folderView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="invisible">
+
+                    <LinearLayout
+                        android:id="@+id/folderViewBackground"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/alphablack"
+                        android:orientation="vertical">
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/folderViewContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="2"
+                            android:orientation="vertical"></LinearLayout>
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="8">
+
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/pictureFolder"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentBottom="true">
+
+                            </androidx.recyclerview.widget.RecyclerView>
+                        </RelativeLayout>
+                    </LinearLayout>
+                </FrameLayout>
+            </FrameLayout>
+
+            <RelativeLayout
+                android:id="@+id/bottomMenu"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:layout_alignParentBottom="true"
+                android:background="?attr/colorPrimary">
+
+                <LinearLayout
+                    android:id="@+id/pictureMenu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:layout_marginLeft="@dimen/margin_10dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/folderName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="图片"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/text_size_medium" />
+
+                    <ImageView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:src="@drawable/icon_triangle_subscript" />
+                </LinearLayout>
+            </RelativeLayout>
+        </RelativeLayout>
+
+        <LinearLayout
+            android:id="@+id/emptyView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/darkgray"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="暂无图片" />
+        </LinearLayout>
+    </FrameLayout>
+</RelativeLayout>

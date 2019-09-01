@@ -1,0 +1,41 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="ShowImgTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/black</item>
+        <item name="colorPrimaryDark">@color/black</item>
+        <item name="colorAccent">@color/black</item>
+
+        <!--<item name="android:windowFullscreen">true</item>//全屏即无通知栏-->
+    </style>
+
+    <style name="BottomDialogStyle" parent="Theme.AppCompat.Light.Dialog">
+        <!--去掉标题-->
+        <item name="android:windowNoTitle">true</item>
+        <!--点击空白处退出-->
+        <item name="android:windowCloseOnTouchOutside">true</item>
+        <!--窗体背景透明-->
+        <item name="android:windowBackground">@color/transparent</item>
+        <!--窗体是否浮动-->
+        <item name="android:windowIsFloating">true</item>
+        <!--背景是否昏暗-->
+        <item name="android:backgroundDimEnabled">true</item>
+        <!--昏暗数量-->
+        <item name="android:backgroundDimAmount">0.6</item>
+        <!--进入退出动画-->
+        <item name="android:windowAnimationStyle">@style/inandoutAnimation</item>
+    </style>
+
+    <style name="inandoutAnimation" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/menu_in</item>
+        <item name="android:windowExitAnimation">@anim/menu_out</item>
+    </style>
+</resources>
