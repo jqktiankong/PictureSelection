@@ -6,7 +6,9 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
+
 import androidx.core.content.FileProvider;
+
 import android.util.Log;
 import android.widget.Toast;
 
@@ -254,5 +256,66 @@ public class FileUtils {
         String mFinalPath = folder.getPath() + File.separator;
         L.d("Using default path " + mFinalPath);
         return mFinalPath;
+    }
+
+    public static String createImgCache() {
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            String sd = Environment.getExternalStorageDirectory().getPath();
+            File file = new File(sd + AppConstant.PATH_IMG_CACHE);
+
+            if (!file.exists()) {
+                file.mkdir();
+            }
+
+            return sd + AppConstant.PATH_IMG_CACHE;
+        } else {
+            L.d("外部存储不可用");
+        }
+
+        return null;
+    }
+
+    public static String createVideoCache() {
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            String sd = Environment.getExternalStorageDirectory().getPath();
+            File file = new File(sd + AppConstant.PATH_VIDEO_CACHE);
+
+            if (!file.exists()) {
+                file.mkdir();
+            }
+
+            return sd + AppConstant.PATH_VIDEO_CACHE;
+        } else {
+            L.d("外部存储不可用");
+        }
+
+        return null;
+    }
+
+    public static void clearImgCache() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String path = Environment.getExternalStorageDirectory().getPath() + AppConstant.PATH_IMG_CACHE;
+                File file = new File(path);
+                if (!file.exists()) {//判断是否待删除目录是否存在
+                    return;
+                }
+
+                String[] content = file.list();//取得当前目录下所有文件和文件夹
+                for (String name : content) {
+                    File temp = new File(path, name);
+                    if (temp.isDirectory()) {//判断是否是目录
+                        clearImgCache();//递归调用，删除目录里的内容
+                        temp.delete();//删除空目录
+                    } else {
+                        if (!temp.delete()) {//直接删除文件
+
+                        }
+                    }
+                }
+            }
+        }).start();
+
     }
 }

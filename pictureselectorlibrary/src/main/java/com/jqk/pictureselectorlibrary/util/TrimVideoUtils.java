@@ -46,49 +46,122 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
-import VideoHandle.EpEditor;
-import VideoHandle.EpVideo;
-import VideoHandle.OnEditorListener;
+import io.microshow.rxffmpeg.RxFFmpegInvoke;
+import io.microshow.rxffmpeg.RxFFmpegSubscriber;
 
 public class TrimVideoUtils {
 
     public interface OnCallBack {
-        void onSuccess(String path);
+        void onSuccess();
 
         void onFail();
+
+        void onProgress(float progress);
     }
 
-    public static void startTrim( String path, int startTime, int duration, OnCallBack onCallBack) throws IOException {
-        final String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        final String fileName = "MP4_" + timeStamp + ".mp4";
-        final String filePath = "/sdcard/DCIM/Camera/" + fileName;
+    public static void startTrim(String path, String trimPath, int startTime, int duration, OnCallBack onCallBack) throws IOException {
 
-        EpVideo epVideo = new EpVideo(path);
+//        EpVideo epVideo = new EpVideo(path);
+//
+////一个参数为剪辑的起始时间，第二个参数为持续时间,单位：秒
+//        epVideo.clip(startTime, duration);
+//
+//        //输出选项，参数为输出文件路径(目前仅支持mp4格式输出)
+//        EpEditor.OutputOption outputOption = new EpEditor.OutputOption(trimPath);
+//        outputOption.frameRate = 30;//输出视频帧率,默认30
+//        outputOption.bitRate = 10;//输出视频码率,默认10
+//        EpEditor.exec(epVideo, outputOption, new OnEditorListener() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("处理完成");
+//                onCallBack.onSuccess();
+//            }
+//
+//            @Override
+//            public void onFailure() {
+//                L.d("处理失败");
+//                onCallBack.onFail();
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                //这里获取处理进度
+//                L.d("progress = " + progress);
+//                onCallBack.onProgress(progress);
+//            }
+//        });
 
-//一个参数为剪辑的起始时间，第二个参数为持续时间,单位：秒
-        epVideo.clip(startTime, duration);//从第一秒开始，剪辑两秒
+        String text = "ffmpeg -ss " + startTime + " -t " + duration + " -i "+ path +" -vcodec copy -acodec copy " + trimPath;
 
-        //输出选项，参数为输出文件路径(目前仅支持mp4格式输出)
-        EpEditor.OutputOption outputOption = new EpEditor.OutputOption(filePath);
-        outputOption.frameRate = 30;//输出视频帧率,默认30
-        outputOption.bitRate = 10;//输出视频码率,默认10
-        EpEditor.exec(epVideo, outputOption, new OnEditorListener() {
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
             @Override
-            public void onSuccess() {
-                L.d("处理完成");
-                onCallBack.onSuccess(filePath);
+            public void onFinish() {
+                onCallBack.onSuccess();
             }
 
             @Override
-            public void onFailure() {
-                L.d("处理失败");
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
                 onCallBack.onFail();
             }
+        });
+    }
+
+    public static void video2pic(String path, String picPath, int picWidth, int picHeight, OnCallBack onCallBack) {
+//        EpEditor.video2pic(path, picPath, picWidth, picHeight, 1, new OnEditorListener() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("处理完成");
+//                onCallBack.onSuccess();
+//            }
+//
+//            @Override
+//            public void onFailure() {
+//                L.d("处理失败");
+//                onCallBack.onFail();
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                L.d("progress = " + progress);
+//                onCallBack.onProgress(progress);
+//            }
+//        });
+
+        String text = "ffmpeg -ss " + startTime + " -t " + duration + " -i "+ path +" -vcodec copy -acodec copy " + trimPath;
+
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+            @Override
+            public void onFinish() {
+                onCallBack.onSuccess();
+            }
 
             @Override
-            public void onProgress(float progress) {
-                //这里获取处理进度
-                L.d("progress = " + progress);
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
+                onCallBack.onFail();
             }
         });
     }

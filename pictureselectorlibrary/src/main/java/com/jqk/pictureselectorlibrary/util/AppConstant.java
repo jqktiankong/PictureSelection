@@ -24,4 +24,7 @@ public class AppConstant {
 
     public static final int FOLDER_TYPE_VIDEO = 1;
     public static final int FOLDER_TYPE_PICTURE = 2;
+
+    public static final String PATH_IMG_CACHE = "/123imgcache/";
+    public static final String PATH_VIDEO_CACHE = "/123vidwocache/";
 }

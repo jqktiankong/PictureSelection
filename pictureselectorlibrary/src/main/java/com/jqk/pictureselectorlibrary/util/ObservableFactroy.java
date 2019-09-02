@@ -31,23 +31,54 @@ public class ObservableFactroy {
         return observable;
     }
 
-    public static Observable<String> trimVideo(String path, int startTime, int duration) {
+    public static Observable<String> trimVideo(String path, String trimPath, int startTime, int duration) {
         Observable<String> observable = Observable.create(new ObservableOnSubscribe<String>() {
             @Override
             public void subscribe(ObservableEmitter<String> emitter) throws Exception {
-               TrimVideoUtils.startTrim(path, startTime, duration, new TrimVideoUtils.OnCallBack() {
+                TrimVideoUtils.startTrim(path, trimPath, startTime, duration, new TrimVideoUtils.OnCallBack() {
                     @Override
-                    public void onSuccess(String path) {
-                        emitter.onNext(path);
+                    public void onSuccess() {
+                        emitter.onComplete();
                     }
 
                     @Override
                     public void onFail() {
                         emitter.onError(new Throwable("解析失败"));
                     }
+
+                    @Override
+                    public void onProgress(float progress) {
+                        emitter.onNext(progress + "");
+                    }
                 });
             }
         }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
+        return observable;
+    }
+
+    public static Observable<String> video2pic(String path, String picPath, int picWidth, int picHeight) {
+        Observable<String> observable = Observable.create(new ObservableOnSubscribe<String>() {
+            @Override
+            public void subscribe(ObservableEmitter<String> emitter) throws Exception {
+                TrimVideoUtils.video2pic(path, picPath, picWidth, picHeight, new TrimVideoUtils.OnCallBack() {
+                    @Override
+                    public void onSuccess() {
+                        emitter.onComplete();
+                    }
+
+                    @Override
+                    public void onFail() {
+                        emitter.onError(new Throwable("解析失败"));
+                    }
+
+                    @Override
+                    public void onProgress(float progress) {
+                        emitter.onNext(progress + "");
+                    }
+                });
+            }
+        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
+
         return observable;
     }
 }

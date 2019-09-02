@@ -13,8 +13,11 @@ android {
         versionCode 1
         versionName "1.0"
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters "armeabi-v7a","arm64-v8a"
+        }
 
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -46,5 +49,7 @@ dependencies {
 
 //    implementation 'com.github.wseemann:FFmpegMediaMetadataRetriever-arm64-v8a:1.0.14'
     implementation 'com.google.android.exoplayer:exoplayer-core:2.10.4'
-    implementation 'com.github.yangjie10930:EpMedia:v0.9.5'
+//    implementation 'com.github.yangjie10930:EpMedia:v0.9.5'
+
+    implementation 'com.github.microshow:RxFFmpeg:2.1.0'
 }

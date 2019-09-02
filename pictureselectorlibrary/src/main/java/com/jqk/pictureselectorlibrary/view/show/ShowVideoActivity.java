@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayerFactory;
@@ -31,13 +32,20 @@ import com.google.android.exoplayer2.util.Util;
 import com.google.android.exoplayer2.video.VideoListener;
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.adapter.ThumbnailAdapter;
+import com.jqk.pictureselectorlibrary.bean.Video;
 import com.jqk.pictureselectorlibrary.customview.MaskView;
+import com.jqk.pictureselectorlibrary.util.AppConstant;
 import com.jqk.pictureselectorlibrary.util.FileUtils;
 import com.jqk.pictureselectorlibrary.util.FormatUtils;
 import com.jqk.pictureselectorlibrary.util.L;
 import com.jqk.pictureselectorlibrary.util.ScreenUtils;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
@@ -56,6 +64,7 @@ public class ShowVideoActivity extends AppCompatActivity {
     private ImageView back;
     private Button ok;
 
+    private Video video;
     private String videoPath;
 
     private int videoViewWidth;
@@ -76,18 +85,25 @@ public class ShowVideoActivity extends AppCompatActivity {
     private SurfaceView surfaceView;
     float maxHeight;
     private LinearLayout parentView;
+    int thumbWidth;
+    int thumbHeight;
+    private boolean isFirstPorgress = true;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_showvideo);
-        videoPath = getIntent().getStringExtra("videoPath");
+        video = (Video) getIntent().getParcelableExtra("video");
+        videoPath = video.getPath();
         L.d("videoPath = " + videoPath);
 
         init();
         initView();
 
-        getPictures();
+        showVideoModel = new ShowVideoModel();
+
+//        getPictures();
+        video2pic();
 
         recyclerview.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -165,8 +181,23 @@ public class ShowVideoActivity extends AppCompatActivity {
                 videoStop();
                 L.d("处理开始");
                 ok.setClickable(false);
+
+                String cachePath = FileUtils.createVideoCache();
+                String fileName = "";
+                if (cachePath != null) {
+                    final String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+                    fileName = "MP4_" + timeStamp + ".mp4";
+                } else {
+                    ok.setClickable(true);
+                    Toast.makeText(ShowVideoActivity.this, "创建文件失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                final String trimPath = cachePath + fileName;
+
                 showVideoModel.trimVideo(
                         videoPath,
+                        trimPath,
                         getStartTime(),
                         getDuration(),
                         new ShowVideoModel.ShowVideoOnCallback() {
@@ -181,11 +212,15 @@ public class ShowVideoActivity extends AppCompatActivity {
                                 ok.setClickable(true);
                                 L.d("处理失败 = " + fail);
                             }
+
+                            @Override
+                            public void onProgress(String progress) {
+                                L.d("处理进度 = " + progress);
+                            }
                         });
             }
         });
 
-        showVideoModel = new ShowVideoModel();
     }
 
     @Override
@@ -207,6 +242,8 @@ public class ShowVideoActivity extends AppCompatActivity {
         showVideoModel.onDestroy();
         videoStop();
         simpleExoPlayer.release();
+
+        FileUtils.clearImgCache();
     }
 
     public void init() {
@@ -226,6 +263,23 @@ public class ShowVideoActivity extends AppCompatActivity {
         videoViewWidth = ScreenUtils.getScreenWidth(this) - (int) (ScreenUtils.getDensity(this) * 20 * 2);
         lp.width = videoViewWidth;
         videoView.setLayoutParams(lp);
+
+        MediaMetadataRetriever retr = new MediaMetadataRetriever();
+        retr.setDataSource(videoPath);
+        String height = retr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT); // 视频高度
+        String width = retr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH); // 视频宽度
+
+        float h2w = Float.parseFloat(height) / Float.parseFloat(width);
+
+        thumbWidth = videoViewWidth / 15;
+        thumbHeight = (int) (videoViewWidth / 15 * h2w);
+
+        ViewGroup.LayoutParams lp2 = maskView.getLayoutParams();
+        lp2.height = (int) (thumbHeight * 1.5);
+        maskView.setLayoutParams(lp2);
+
+        L.d("thumbHeight = " + thumbHeight);
+        L.d("maskView.height = " + (int) (thumbHeight * 1.5));
     }
 
     public void initPlayView() {
@@ -385,6 +439,61 @@ public class ShowVideoActivity extends AppCompatActivity {
                 });
     }
 
+    public void video2pic() {
+
+        String cachePath = FileUtils.createImgCache();
+
+        if (cachePath != null) {
+
+        } else {
+            Toast.makeText(this, "创建文件夹失败", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        maskView.setUnit(thumbWidth);
+        L.d("thumbWidth = " + thumbWidth);
+        time_length = 1000 / (float) thumbWidth;
+        maskView.setTime_length(time_length);
+        L.d("time_length = " + time_length);
+
+        String path = videoPath;
+        int num = video.getDuration() / 1000;
+        List<String> names = new ArrayList<>();
+        long time = new Date().getTime();
+        for (int i = 1; i <= num; i++) {
+            names.add(cachePath + time + "_" + i + ".jpg");
+        }
+
+        ThumbnailAdapter thumbnailAdapter = new ThumbnailAdapter(ShowVideoActivity.this, names, thumbWidth, thumbHeight);
+        recyclerview.setAdapter(thumbnailAdapter);
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(ShowVideoActivity.this);
+        linearLayoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
+        recyclerview.setLayoutManager(linearLayoutManager);
+
+        showVideoModel.video2pic(path, cachePath + time + "_%d.jpg", thumbWidth, thumbHeight, new ShowVideoModel.ShowVideoOnCallback() {
+            @Override
+            public void onFail(String fail) {
+                L.d("解析失败 = " + fail);
+            }
+
+            @Override
+            public void onFinish(String path) {
+
+            }
+
+            @Override
+            public void onProgress(String progress) {
+                L.d("刷新 = " + progress);
+               if (isFirstPorgress) {
+                   isFirstPorgress = false;
+                   initPlayView();
+               }
+                thumbnailAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+
     public void getPictures() {
         Observable.create(new ObservableOnSubscribe<LongSparseArray<Bitmap>>() {
             @Override
@@ -442,11 +551,11 @@ public class ShowVideoActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(LongSparseArray<Bitmap> bitmaps) {
-                        ThumbnailAdapter thumbnailAdapter = new ThumbnailAdapter(ShowVideoActivity.this, bitmaps);
-                        recyclerview.setAdapter(thumbnailAdapter);
-                        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(ShowVideoActivity.this);
-                        linearLayoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
-                        recyclerview.setLayoutManager(linearLayoutManager);
+//                        ThumbnailAdapter thumbnailAdapter = new ThumbnailAdapter(ShowVideoActivity.this, bitmaps);
+//                        recyclerview.setAdapter(thumbnailAdapter);
+//                        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(ShowVideoActivity.this);
+//                        linearLayoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
+//                        recyclerview.setLayoutManager(linearLayoutManager);
 
                         initPlayView();
                     }

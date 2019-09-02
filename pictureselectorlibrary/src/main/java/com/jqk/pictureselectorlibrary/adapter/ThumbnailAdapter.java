@@ -9,15 +9,22 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.bumptech.glide.Glide;
 import com.jqk.pictureselectorlibrary.R;
+
+import java.util.List;
 
 public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.ViewHolder> {
     private Context context;
-    private LongSparseArray<Bitmap> bitmaps;
+    private List<String> pictures;
+    private int width;
+    private int height;
 
-    public ThumbnailAdapter(Context context, LongSparseArray<Bitmap> bitmaps) {
+    public ThumbnailAdapter(Context context, List<String> pictures, int width, int height) {
         this.context = context;
-        this.bitmaps = bitmaps;
+        this.pictures = pictures;
+        this.width = width;
+        this.height = height;
     }
 
     @Override
@@ -30,16 +37,17 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
 //        L.d("position = " + position);
-//        ViewGroup.LayoutParams  lp = holder.thumbnailView.getLayoutParams();
-//        lp.width = 100;
-//        lp.height = 100;
-//        holder.thumbnailView.setLayoutParams(lp);
-        holder.thumbnailView.setImageBitmap(bitmaps.get(position));
+        ViewGroup.LayoutParams  lp = holder.thumbnailView.getLayoutParams();
+        lp.width = width;
+        lp.height = height;
+        holder.thumbnailView.setLayoutParams(lp);
+
+        Glide.with(context).load(pictures.get(position)).into(holder.thumbnailView);
     }
 
     @Override
     public int getItemCount() {
-        return bitmaps.size();
+        return pictures.size();
     }
 
     class ViewHolder extends RecyclerView.ViewHolder {

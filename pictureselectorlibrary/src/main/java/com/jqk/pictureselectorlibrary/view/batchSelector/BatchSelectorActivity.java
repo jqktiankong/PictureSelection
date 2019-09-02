@@ -174,7 +174,7 @@ public class BatchSelectorActivity extends BaseActivity implements View.OnClickL
         if (video.getDuration() > 1000 * 15) {
             Intent intent = new Intent();
             intent.setClass(this, ShowVideoActivity.class);
-            intent.putExtra("videoPath", video.getPath());
+            intent.putExtra("video", video);
             startActivity(intent);
         } else {
             Toast.makeText(this, "时长小于15秒", Toast.LENGTH_SHORT).show();
