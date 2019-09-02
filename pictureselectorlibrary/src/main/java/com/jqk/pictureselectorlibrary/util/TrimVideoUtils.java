@@ -113,6 +113,7 @@ public class TrimVideoUtils {
 
             @Override
             public void onError(String message) {
+                L.d("解析错误 = " + message);
                 onCallBack.onFail();
             }
         });
@@ -139,7 +140,7 @@ public class TrimVideoUtils {
 //            }
 //        });
 
-        String text = "ffmpeg -ss " + startTime + " -t " + duration + " -i "+ path +" -vcodec copy -acodec copy " + trimPath;
+        String text = "ffmpeg -i path -r 1 -q:v 2 -f image2 picPath";
 
         String[] commands = text.split(" ");
 
@@ -161,6 +162,7 @@ public class TrimVideoUtils {
 
             @Override
             public void onError(String message) {
+                L.d("解析错误 = " + message);
                 onCallBack.onFail();
             }
         });
