@@ -243,7 +243,7 @@ public class ShowVideoActivity extends AppCompatActivity {
         videoStop();
         simpleExoPlayer.release();
 
-//        FileUtils.clearImgCache();
+        FileUtils.clearImgCache();
     }
 
     public void init() {

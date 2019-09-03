@@ -23,28 +23,9 @@
  */
 package com.jqk.pictureselectorlibrary.util;
 
-import androidx.annotation.NonNull;
 
-import com.coremedia.iso.boxes.Container;
-import com.googlecode.mp4parser.FileDataSourceViaHeapImpl;
-import com.googlecode.mp4parser.authoring.Movie;
-import com.googlecode.mp4parser.authoring.Track;
-import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
-import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
-import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
-import com.googlecode.mp4parser.authoring.tracks.CroppedTrack;
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.Formatter;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
 
 import io.microshow.rxffmpeg.RxFFmpegInvoke;
 import io.microshow.rxffmpeg.RxFFmpegSubscriber;
@@ -61,37 +42,7 @@ public class TrimVideoUtils {
 
     public static void startTrim(String path, String trimPath, int startTime, int duration, OnCallBack onCallBack) throws IOException {
 
-//        EpVideo epVideo = new EpVideo(path);
-//
-////一个参数为剪辑的起始时间，第二个参数为持续时间,单位：秒
-//        epVideo.clip(startTime, duration);
-//
-//        //输出选项，参数为输出文件路径(目前仅支持mp4格式输出)
-//        EpEditor.OutputOption outputOption = new EpEditor.OutputOption(trimPath);
-//        outputOption.frameRate = 30;//输出视频帧率,默认30
-//        outputOption.bitRate = 10;//输出视频码率,默认10
-//        EpEditor.exec(epVideo, outputOption, new OnEditorListener() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("处理完成");
-//                onCallBack.onSuccess();
-//            }
-//
-//            @Override
-//            public void onFailure() {
-//                L.d("处理失败");
-//                onCallBack.onFail();
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                //这里获取处理进度
-//                L.d("progress = " + progress);
-//                onCallBack.onProgress(progress);
-//            }
-//        });
-
-        String text = "ffmpeg -ss " + startTime + " -t " + duration + " -i "+ path +" -vcodec copy -acodec copy " + trimPath;
+        String text = "ffmpeg -ss " + startTime + " -t " + duration + " -i " + path + " -vcodec copy -acodec copy " + trimPath;
 
         String[] commands = text.split(" ");
 
@@ -120,27 +71,7 @@ public class TrimVideoUtils {
     }
 
     public static void video2pic(String path, String picPath, int picWidth, int picHeight, OnCallBack onCallBack) {
-//        EpEditor.video2pic(path, picPath, picWidth, picHeight, 1, new OnEditorListener() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("处理完成");
-//                onCallBack.onSuccess();
-//            }
-//
-//            @Override
-//            public void onFailure() {
-//                L.d("处理失败");
-//                onCallBack.onFail();
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                L.d("progress = " + progress);
-//                onCallBack.onProgress(progress);
-//            }
-//        });
-
-        String text = "ffmpeg -i path -r 1 -q:v 2 -f image2 picPath";
+        String text = "ffmpeg -i " + path + " -s " + picWidth + "x" + picHeight + " -r 1 -q:v 2 -f image2 " + picPath;
 
         String[] commands = text.split(" ");
 

@@ -7,6 +7,7 @@ import com.jqk.pictureselectorlibrary.util.ObservableFactroy;
 
 import java.io.File;
 
+import io.microshow.rxffmpeg.RxFFmpegInvoke;
 import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.disposables.CompositeDisposable;
@@ -96,5 +97,7 @@ public class ShowVideoModel {
         if (observable2 != null) {
             observable2.unsubscribeOn(Schedulers.io());
         }
+
+        RxFFmpegInvoke.getInstance().exit();
     }
 }
