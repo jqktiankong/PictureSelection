@@ -46,8 +46,8 @@ dependencies {
     implementation 'org.greenrobot:eventbus:3.0.0'
     implementation 'com.github.chrisbanes:PhotoView:2.1.3'
     implementation 'com.googlecode.mp4parser:isoparser:1.1.20'
-
+    // exo播放器
     implementation 'com.google.android.exoplayer:exoplayer-core:2.10.4'
-
+    // FFmpeg命令框架
     implementation 'com.github.microshow:RxFFmpeg:2.1.0'
 }

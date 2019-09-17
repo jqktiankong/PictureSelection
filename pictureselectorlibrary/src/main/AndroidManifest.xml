@@ -13,6 +13,7 @@
         <activity android:name=".view.show.ShowImgActivity"></activity>
         <activity android:name=".editPicture.EditPictureActivity"></activity>
         <activity android:name=".view.show.ShowVideoActivity"></activity>
+        <activity android:name=".view.recordvideo.RecordVideoActivity"></activity>
 
         <provider
             android:name="androidx.core.content.FileProvider"

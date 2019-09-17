@@ -6,9 +6,11 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+import com.jqk.pictureselectorlibrary.view.recordvideo.RecordVideoActivity;
+
 public class MainActivity extends AppCompatActivity {
 
-    private Button single, more;
+    private Button single, more, recordVideo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -17,6 +19,7 @@ public class MainActivity extends AppCompatActivity {
 
         single = (Button) findViewById(R.id.single);
         more = (Button) findViewById(R.id.more);
+        recordVideo = findViewById(R.id.recordVideo);
 
         single.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -37,6 +40,15 @@ public class MainActivity extends AppCompatActivity {
 //                Intent intent = new Intent();
 //                intent.setClass(MainActivity.this, EditPictureActivity.class);
 //                startActivity(intent);
+            }
+        });
+
+        recordVideo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent();
+                intent.setClass(MainActivity.this, RecordVideoActivity.class);
+                startActivity(intent);
             }
         });
     }
