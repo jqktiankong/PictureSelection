@@ -9,10 +9,17 @@
         android:layout_height="match_parent"
         android:layout_weight="1">
 
-        <SurfaceView
-            android:id="@+id/surface_view"
+        <LinearLayout
+            android:id="@+id/parent_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:gravity="center">
+
+            <SurfaceView
+                android:id="@+id/surface_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </LinearLayout>
 
         <com.jqk.pictureselectorlibrary.view.recordvideo.FocusView
             android:id="@+id/focus_view"

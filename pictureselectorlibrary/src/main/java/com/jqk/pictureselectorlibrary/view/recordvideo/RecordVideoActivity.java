@@ -7,14 +7,19 @@ import android.os.Bundle;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.util.L;
+import com.jqk.pictureselectorlibrary.util.ScreenUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,6 +31,7 @@ public class RecordVideoActivity extends AppCompatActivity {
     private Button stop;
     private Button switchCamera;
     private FocusView focusView;
+    private LinearLayout parentView;
 
     private Camera camera;
     private int fontCameraIndex = -1;
@@ -34,6 +40,8 @@ public class RecordVideoActivity extends AppCompatActivity {
     private int selectedCameraIndex = -1;
 
     private int cameraWidth, cameraHeight;
+    private int parentViewWidth, parentViewHeight;
+    private Camera.Size size;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -45,6 +53,7 @@ public class RecordVideoActivity extends AppCompatActivity {
         stop = findViewById(R.id.stop);
         switchCamera = findViewById(R.id.switch_camera);
         focusView = findViewById(R.id.focus_view);
+        parentView = findViewById(R.id.parent_view);
 
         getCameraInfo();
 
@@ -163,6 +172,15 @@ public class RecordVideoActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+
+
+        }
+    }
+
     public void startCamera(int cameraIndex) {
         if (surfaceView != null) {
             surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
@@ -177,12 +195,48 @@ public class RecordVideoActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
                     }
+
+                    parentViewWidth = parentView.getWidth();
+                    parentViewHeight = parentView.getHeight();
+
+                    L.d("原始parentViewWidth = " + parentViewWidth);
+                    L.d("原始parentViewHeight = " + parentViewHeight);
+
+                    Camera.Parameters parameters = camera.getParameters();
+                    List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
+                    size = getOptimalSize(sizes, parentViewHeight, parentViewWidth);
+                    // 竖屏交换宽高
+                    int a = size.width;
+                    int b = size.height;
+                    size.width = b;
+                    size.height = a;
+
+                    L.d("size.width = " + size.width);
+                    L.d("size.height = " + size.height);
+
+                    if (parentViewWidth > size.width) {
+                        parentViewHeight = size.height / size.width * parentViewWidth;
+                    } else if (parentViewHeight > size.height) {
+                        parentViewWidth = (int) (((float) size.width) / size.height * parentViewHeight);
+                    }
+
+                    L.d("处理后parentViewWidth = " + parentViewWidth);
+                    L.d("处理后parentViewHeight = " + parentViewHeight);
+
+                    ViewGroup.LayoutParams lp = surfaceView.getLayoutParams();
+                    lp.width = parentViewWidth;
+                    lp.height = parentViewHeight;
+
+                    surfaceView.setLayoutParams(lp);
                 }
 
                 @Override
                 public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
                     cameraWidth = width;
                     cameraHeight = height;
+
+                    L.d("cameraWidth = " + width);
+                    L.d("cameraHeight = " + height);
 
                     setCamera();
                 }
@@ -206,21 +260,12 @@ public class RecordVideoActivity extends AppCompatActivity {
     public void setCamera() {
         Camera.Parameters parameters = camera.getParameters();
 
-        List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
-        int[] a = new int[sizes.size()];
-        int[] b = new int[sizes.size()];
-        for (int i = 0; i < sizes.size(); i++) {
-            int supportH = sizes.get(i).height;
-            int supportW = sizes.get(i).width;
-            L.d("supportW:" + supportW + "supportH:" + supportH);
+        List<String> focusModes = parameters.getSupportedFocusModes();
+        if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         }
 
-//        List<String> focusModes = parameters.getSupportedFocusModes();
-//        if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-//            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-//        }
-
-        parameters.setPreviewSize(2224, 1668);
+        parameters.setPreviewSize(size.height, size.width);
         camera.setDisplayOrientation(90);
         camera.setParameters(parameters);
         camera.startPreview();
@@ -320,6 +365,36 @@ public class RecordVideoActivity extends AppCompatActivity {
             }
 
         }
+    }
+
+    private Camera.Size getOptimalSize(@NonNull List<Camera.Size> sizes, int w, int h) {
+        final double ASPECT_TOLERANCE = 0.1;
+        double targetRatio = (double) h / w;
+        Camera.Size optimalSize = null;
+        double minDiff = Double.MAX_VALUE;
+
+        int targetHeight = h;
+
+        for (Camera.Size size : sizes) {
+            double ratio = (double) size.width / size.height;
+            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE) continue;
+            if (Math.abs(size.height - targetHeight) < minDiff) {
+                optimalSize = size;
+                minDiff = Math.abs(size.height - targetHeight);
+            }
+        }
+
+        if (optimalSize == null) {
+            minDiff = Double.MAX_VALUE;
+            for (Camera.Size size : sizes) {
+                if (Math.abs(size.height - targetHeight) < minDiff) {
+                    optimalSize = size;
+                    minDiff = Math.abs(size.height - targetHeight);
+                }
+            }
+        }
+
+        return optimalSize;
     }
 
 }
