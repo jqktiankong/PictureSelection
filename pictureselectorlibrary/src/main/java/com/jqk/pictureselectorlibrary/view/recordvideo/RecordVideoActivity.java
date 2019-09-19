@@ -1,25 +1,29 @@
 package com.jqk.pictureselectorlibrary.view.recordvideo;
 
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.hardware.Camera;
-import android.os.Build;
+import android.media.AudioManager;
+import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.util.L;
-import com.jqk.pictureselectorlibrary.util.ScreenUtils;
+import com.jqk.pictureselectorlibrary.util.TrimVideoUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,7 +37,6 @@ public class RecordVideoActivity extends AppCompatActivity {
     private FocusView focusView;
     private LinearLayout parentView;
 
-    private Camera camera;
     private int fontCameraIndex = -1;
     private int backCameraIndex = -1;
     private int cameraCnt = 0;
@@ -43,9 +46,15 @@ public class RecordVideoActivity extends AppCompatActivity {
     private int parentViewWidth, parentViewHeight;
     private Camera.Size size;
 
+    private List<String> fileList;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         setContentView(R.layout.activity_recordvideo);
 
         surfaceView = findViewById(R.id.surface_view);
@@ -55,7 +64,34 @@ public class RecordVideoActivity extends AppCompatActivity {
         focusView = findViewById(R.id.focus_view);
         parentView = findViewById(R.id.parent_view);
 
+        fileList = new ArrayList<>();
+
         getCameraInfo();
+
+        ((AudioManager) getSystemService(Context.AUDIO_SERVICE)).setStreamMute(AudioManager.STREAM_SYSTEM, true);
+
+        start.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
+                fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
+            }
+        });
+
+        stop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MediaRecorderManager.release();
+                // 刷新文件管理器
+                Uri localUri = Uri.fromFile(MediaRecorderManager.getOutputMediaFile());
+                Intent localIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, localUri);
+                sendBroadcast(localIntent);
+
+                L.d("filelist = " + fileList.toString());
+
+               MediaRecorderManager.margeVideos(fileList);
+            }
+        });
 
         switchCamera.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -151,7 +187,7 @@ public class RecordVideoActivity extends AppCompatActivity {
                 L.d("right = " + (right));
                 L.d("bottom = " + (bottom));
 
-                setFocus(focusRect);
+                CameraManager.setFocus(focusRect);
             }
         });
 
@@ -170,15 +206,30 @@ public class RecordVideoActivity extends AppCompatActivity {
                 }
             }
         }
+
+//        TrimVideoUtils.mergeVideos(new TrimVideoUtils.OnCallBack() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("onSuccess");
+//            }
+//
+//            @Override
+//            public void onFail() {
+//                L.d("onFail");
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                L.d("progress = " + progress);
+//            }
+//        });
     }
 
     @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-
-
-        }
+    protected void onDestroy() {
+        super.onDestroy();
+        MediaRecorderManager.release();
+        CameraManager.stopAndRelease();
     }
 
     public void startCamera(int cameraIndex) {
@@ -186,26 +237,20 @@ public class RecordVideoActivity extends AppCompatActivity {
             surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {
-                    if (camera == null) {
-                        camera = Camera.open(cameraIndex);
-
-                        try {
-                            camera.setPreviewDisplay(surfaceView.getHolder());
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        CameraManager.open(cameraIndex);
+                        CameraManager.setPreviewDisplay(surfaceView.getHolder());
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
+
 
                     parentViewWidth = parentView.getWidth();
                     parentViewHeight = parentView.getHeight();
 
-                    L.d("原始parentViewWidth = " + parentViewWidth);
-                    L.d("原始parentViewHeight = " + parentViewHeight);
 
-                    Camera.Parameters parameters = camera.getParameters();
-                    List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
-                    size = getOptimalSize(sizes, parentViewHeight, parentViewWidth);
-                    // 竖屏交换宽高
+                    size = CameraManager.getOptimalSize(parentViewHeight, parentViewWidth);
+//                    // 竖屏交换宽高
                     int a = size.width;
                     int b = size.height;
                     size.width = b;
@@ -213,7 +258,7 @@ public class RecordVideoActivity extends AppCompatActivity {
 
                     L.d("size.width = " + size.width);
                     L.d("size.height = " + size.height);
-
+                    // 防止图像变形
                     if (parentViewWidth > size.width) {
                         parentViewHeight = size.height / size.width * parentViewWidth;
                     } else if (parentViewHeight > size.height) {
@@ -238,18 +283,13 @@ public class RecordVideoActivity extends AppCompatActivity {
                     L.d("cameraWidth = " + width);
                     L.d("cameraHeight = " + height);
 
-                    setCamera();
+                    CameraManager.setParameters(size);
+                    CameraManager.startPreview();
                 }
 
                 @Override
                 public void surfaceDestroyed(SurfaceHolder holder) {
-                    if (camera == null) {
-                        return;
-                    }
-
-                    camera.stopPreview();
-                    camera.release();
-                    camera = null;
+                    CameraManager.stopAndRelease();
                 }
             });
         } else {
@@ -257,66 +297,46 @@ public class RecordVideoActivity extends AppCompatActivity {
         }
     }
 
-    public void setCamera() {
-        Camera.Parameters parameters = camera.getParameters();
-
-        List<String> focusModes = parameters.getSupportedFocusModes();
-        if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-        }
-
-        parameters.setPreviewSize(size.height, size.width);
-        camera.setDisplayOrientation(90);
-        camera.setParameters(parameters);
-        camera.startPreview();
-    }
-
     public void switchCamera() {
         if (cameraCnt <= 1) {
             L.d("只有一个摄像头");
         } else {
             if (selectedCameraIndex == fontCameraIndex) {
-                if (camera != null) {
-                    camera.stopPreview();
-                    camera.release();
-                    camera = null;
-                    selectedCameraIndex = backCameraIndex;
-                    camera = Camera.open(backCameraIndex);
-                    setCamera();
+                selectedCameraIndex = backCameraIndex;
 
-                    try {
-                        camera.setPreviewDisplay(surfaceView.getHolder());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    camera.startPreview();
-                } else {
-
+                try {
+                    MediaRecorderManager.release();
+                    CameraManager.stopAndRelease();
+                    CameraManager.open(backCameraIndex);
+                    CameraManager.setPreviewDisplay(surfaceView.getHolder());
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-
+                CameraManager.setParameters(size);
+                CameraManager.startPreview();
+                MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
+                fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
 
             } else if (selectedCameraIndex == backCameraIndex) {
-                if (camera != null) {
-                    camera.stopPreview();
-                    camera.release();
-                    camera = null;
-                    selectedCameraIndex = fontCameraIndex;
-                    camera = Camera.open(fontCameraIndex);
-                    setCamera();
+                selectedCameraIndex = fontCameraIndex;
 
-                    try {
-                        camera.setPreviewDisplay(surfaceView.getHolder());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    camera.startPreview();
-                } else {
-
+                try {
+                    MediaRecorderManager.release();
+                    CameraManager.stopAndRelease();
+                    CameraManager.open(fontCameraIndex);
+                    CameraManager.setPreviewDisplay(surfaceView.getHolder());
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+                CameraManager.setParameters(size);
+                CameraManager.startPreview();
+                MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
+                fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
             } else {
                 L.d("切换前后摄像头失败");
             }
         }
+
     }
 
     public void getCameraInfo() {
@@ -333,68 +353,4 @@ public class RecordVideoActivity extends AppCompatActivity {
             }
         }
     }
-
-    @RequiresApi
-    public void setFocus(Rect rect) {
-
-        L.d("当前版本 = " + Build.VERSION.SDK_INT);
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
-            L.d("开始对焦");
-
-            Camera.Parameters params = camera.getParameters();
-
-            if (params.getMaxNumMeteringAreas() > 0) { // check that metering areas are supported
-                List<Camera.Area> meteringAreas = new ArrayList<Camera.Area>();
-
-                meteringAreas.add(new Camera.Area(rect, 1000)); // set weight to 60%
-                params.setMeteringAreas(meteringAreas);
-
-                params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-                params.setFocusAreas(meteringAreas);
-            }
-            camera.autoFocus(new Camera.AutoFocusCallback() {
-                @Override
-                public void onAutoFocus(boolean success, Camera camera) {
-                    L.d("success = " + success);
-                }
-            });
-            try {
-                camera.setParameters(params);
-            } catch (Exception e) {
-                L.d("e = " + e.toString());
-            }
-
-        }
-    }
-
-    private Camera.Size getOptimalSize(@NonNull List<Camera.Size> sizes, int w, int h) {
-        final double ASPECT_TOLERANCE = 0.1;
-        double targetRatio = (double) h / w;
-        Camera.Size optimalSize = null;
-        double minDiff = Double.MAX_VALUE;
-
-        int targetHeight = h;
-
-        for (Camera.Size size : sizes) {
-            double ratio = (double) size.width / size.height;
-            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE) continue;
-            if (Math.abs(size.height - targetHeight) < minDiff) {
-                optimalSize = size;
-                minDiff = Math.abs(size.height - targetHeight);
-            }
-        }
-
-        if (optimalSize == null) {
-            minDiff = Double.MAX_VALUE;
-            for (Camera.Size size : sizes) {
-                if (Math.abs(size.height - targetHeight) < minDiff) {
-                    optimalSize = size;
-                    minDiff = Math.abs(size.height - targetHeight);
-                }
-            }
-        }
-
-        return optimalSize;
-    }
-
 }

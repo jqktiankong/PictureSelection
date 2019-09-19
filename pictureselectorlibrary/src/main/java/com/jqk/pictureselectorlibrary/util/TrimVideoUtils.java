@@ -99,6 +99,36 @@ public class TrimVideoUtils {
         });
     }
 
+    public static void mergeVideos(String filelistPath, String mergePaht, OnCallBack onCallBack) {
+//        ffmpeg -f concat -i Cam01.txt -c copy Cam01.mp4
+        String text = "ffmpeg -y -f concat -safe 0 -i " + filelistPath + " -c copy " + mergePaht;
+
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+            @Override
+            public void onFinish() {
+                onCallBack.onSuccess();
+            }
+
+            @Override
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
+                L.d("解析错误 = " + message);
+                onCallBack.onFail();
+            }
+        });
+    }
+
     public static String stringForTime(int timeMs) {
         int totalSeconds = timeMs / 1000;
 

@@ -27,4 +27,6 @@ public class AppConstant {
 
     public static final String PATH_IMG_CACHE = "/123imgcache/";
     public static final String PATH_VIDEO_CACHE = "/123vidwocache/";
+    public static final String PATH_FILELIST = PATH_VIDEO_CACHE + "filelist.txt";
+
 }

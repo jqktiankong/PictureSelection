@@ -17,6 +17,9 @@ import com.jqk.pictureselectorlibrary.bean.Picture;
 import com.jqk.pictureselectorlibrary.bean.Video;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -133,7 +136,7 @@ public class FileUtils {
                 MediaStore.Video.Media.SIZE
         };
         //全部视频
-        String videoWhere = MediaStore.Images.Media.MIME_TYPE + "=? or "
+        String videoWhere = MediaStore.Video.Media.MIME_TYPE + "=? or "
                 + MediaStore.Video.Media.MIME_TYPE + "=? or "
                 + MediaStore.Video.Media.MIME_TYPE + "=? or "
                 + MediaStore.Video.Media.MIME_TYPE + "=? or "
@@ -316,6 +319,10 @@ public class FileUtils {
                 }
             }
         }).start();
+
+    }
+
+    public static void createFilelist(List<String> filelist) {
 
     }
 }

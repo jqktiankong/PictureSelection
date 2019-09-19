@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -15,6 +16,7 @@ import androidx.core.content.FileProvider;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import android.util.AttributeSet;
 import android.util.Log;
 import android.widget.Toast;
@@ -123,9 +125,11 @@ public class ImageDisplayView extends RecyclerView implements ImageDisplayAdapte
 
     public void requestPermissions() {
         if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(getContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                || ContextCompat.checkSelfPermission(getContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(getContext(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(activity,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA},
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO},
                     1);
         }
     }
@@ -144,6 +148,12 @@ public class ImageDisplayView extends RecyclerView implements ImageDisplayAdapte
                         && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                 } else {
                     Toast.makeText(getContext(), "拍照权限被拒绝", Toast.LENGTH_SHORT);
+                }
+
+                if (grantResults.length > 0
+                        && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
+                } else {
+                    Toast.makeText(getContext(), "录音权限被拒绝", Toast.LENGTH_SHORT);
                 }
                 return;
             }
