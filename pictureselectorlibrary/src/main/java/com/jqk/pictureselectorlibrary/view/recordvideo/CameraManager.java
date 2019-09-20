@@ -8,7 +8,6 @@ import android.view.SurfaceHolder;
 import androidx.annotation.RequiresApi;
 
 import com.jqk.pictureselectorlibrary.util.L;
-import com.jqk.pictureselectorlibrary.util.ScreenUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,11 +16,14 @@ import java.util.List;
 public class CameraManager {
     private static Camera camera;
 
+    private static int cameraIndex;
+
     public static Camera getInstance() {
         return camera;
     }
 
     public static void open(int index) {
+        cameraIndex = index;
         camera = Camera.open(index);
     }
 
@@ -35,12 +37,17 @@ public class CameraManager {
         if (camera != null) {
             Camera.Parameters parameters = camera.getParameters();
 
-            List<String> focusModes = parameters.getSupportedFocusModes();
-            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+            if (cameraIndex == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+
+            } else if (cameraIndex == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                List<String> focusModes = parameters.getSupportedFocusModes();
+                if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+                    parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+                }
             }
 
             parameters.setPreviewSize(size.height, size.width);
+
             camera.setDisplayOrientation(90);
             camera.setParameters(parameters);
         }
@@ -107,7 +114,7 @@ public class CameraManager {
     }
 
     @RequiresApi
-    public  static void setFocus(Rect rect) {
+    public static void setFocus(Rect rect) {
 
         L.d("当前版本 = " + Build.VERSION.SDK_INT);
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {

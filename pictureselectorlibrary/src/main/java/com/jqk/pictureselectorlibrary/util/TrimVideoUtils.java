@@ -101,7 +101,7 @@ public class TrimVideoUtils {
 
     public static void mergeVideos(String filelistPath, String mergePaht, OnCallBack onCallBack) {
 //        ffmpeg -f concat -i Cam01.txt -c copy Cam01.mp4
-        String text = "ffmpeg -y -f concat -safe 0 -i " + filelistPath + " -c copy " + mergePaht;
+        String text = "ffmpeg -f concat -safe 0 -i " + filelistPath + " -c copy " + mergePaht;
 
         String[] commands = text.split(" ");
 
@@ -128,6 +128,99 @@ public class TrimVideoUtils {
             }
         });
     }
+
+    public static void vflipVideo(OnCallBack onCallBack) {
+//        ffmpeg -i fan.jpg -vf vflip -y vflip.png
+        String text = "ffmpeg -i /storage/emulated/0/123vidwocache/VID_20190920_161227.mp4 -vf hflip -y /storage/emulated/0/123vidwocache/vflip.mp4";
+
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+            @Override
+            public void onFinish() {
+                onCallBack.onSuccess();
+            }
+
+            @Override
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
+                L.d("解析错误 = " + message);
+                onCallBack.onFail();
+            }
+        });
+    }
+
+    public static void test1(OnCallBack onCallBack) {
+//        ffmpeg -i input1.flv -c copy -bsf:v h264_mp4toannexb -f mpegts input1.ts
+
+        String text = "ffmpeg -i /storage/emulated/0/123vidwocache/VID_20190920_174159.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts /storage/emulated/0/123vidwocache/VID_20190920_174159.ts";
+
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+            @Override
+            public void onFinish() {
+                onCallBack.onSuccess();
+            }
+
+            @Override
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
+                L.d("解析错误 = " + message);
+                onCallBack.onFail();
+            }
+        });
+    }
+
+    public static void test2(OnCallBack onCallBack) {
+//        ffmpeg -i "concat:input1.ts|input2.ts|input3.ts" -c copy -bsf:a aac_adtstoasc -movflags +faststart output.mp4
+
+        String text = "ffmpeg -i \"concat:/storage/emulated/0/123vidwocache/VID_20190920_174159.ts\" -c copy -bsf:a aac_adtstoasc -movflags +faststart /storage/emulated/0/123vidwocache/output.mp4";
+
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+            @Override
+            public void onFinish() {
+                onCallBack.onSuccess();
+            }
+
+            @Override
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
+                L.d("解析错误 = " + message);
+                onCallBack.onFail();
+            }
+        });
+    }
+
 
     public static String stringForTime(int timeMs) {
         int totalSeconds = timeMs / 1000;

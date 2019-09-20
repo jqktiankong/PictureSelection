@@ -22,6 +22,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
+import com.jqk.pictureselectorlibrary.util.FileUtils;
 import com.jqk.pictureselectorlibrary.util.L;
 import com.jqk.pictureselectorlibrary.util.TrimVideoUtils;
 
@@ -73,6 +74,7 @@ public class RecordVideoActivity extends AppCompatActivity {
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                fileList = new ArrayList<>();
                 MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
                 fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
             }
@@ -89,7 +91,7 @@ public class RecordVideoActivity extends AppCompatActivity {
 
                 L.d("filelist = " + fileList.toString());
 
-               MediaRecorderManager.margeVideos(fileList);
+                MediaRecorderManager.margeVideos(fileList);
             }
         });
 
@@ -207,7 +209,7 @@ public class RecordVideoActivity extends AppCompatActivity {
             }
         }
 
-//        TrimVideoUtils.mergeVideos(new TrimVideoUtils.OnCallBack() {
+//        TrimVideoUtils.mergeVideos("/storage/emulated/0/123vidwocache/filelist.txt", "/storage/emulated/0/123vidwocache/123.mp4", new TrimVideoUtils.OnCallBack() {
 //            @Override
 //            public void onSuccess() {
 //                L.d("onSuccess");
@@ -223,6 +225,57 @@ public class RecordVideoActivity extends AppCompatActivity {
 //                L.d("progress = " + progress);
 //            }
 //        });
+
+//        TrimVideoUtils.vflipVideo(new TrimVideoUtils.OnCallBack() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("onSuccess");
+//            }
+//
+//            @Override
+//            public void onFail() {
+//                L.d("onFail");
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                L.d("progress = " + progress);
+//            }
+//        });
+
+//        TrimVideoUtils.test1(new TrimVideoUtils.OnCallBack() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("onSuccess");
+//            }
+//
+//            @Override
+//            public void onFail() {
+//                L.d("onFail");
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                L.d("progress = " + progress);
+//            }
+//        });
+
+        TrimVideoUtils.test2(new TrimVideoUtils.OnCallBack() {
+            @Override
+            public void onSuccess() {
+                L.d("onSuccess");
+            }
+
+            @Override
+            public void onFail() {
+                L.d("onFail");
+            }
+
+            @Override
+            public void onProgress(float progress) {
+                L.d("progress = " + progress);
+            }
+        });
     }
 
     @Override
