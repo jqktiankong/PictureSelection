@@ -24,8 +24,20 @@
 package com.jqk.pictureselectorlibrary.util;
 
 
+import com.coremedia.iso.boxes.Container;
+import com.googlecode.mp4parser.authoring.Movie;
+import com.googlecode.mp4parser.authoring.Track;
+import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
+import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
+import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
+
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Formatter;
+import java.util.LinkedList;
+import java.util.List;
 
 import io.microshow.rxffmpeg.RxFFmpegInvoke;
 import io.microshow.rxffmpeg.RxFFmpegSubscriber;
@@ -162,7 +174,7 @@ public class TrimVideoUtils {
     public static void test1(OnCallBack onCallBack) {
 //        ffmpeg -i input1.flv -c copy -bsf:v h264_mp4toannexb -f mpegts input1.ts
 
-        String text = "ffmpeg -i /storage/emulated/0/123vidwocache/VID_20190920_174159.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts /storage/emulated/0/123vidwocache/VID_20190920_174159.ts";
+        String text = "ffmpeg -noautorotate -i /storage/emulated/0/123vidwocache/VID_20190921_144251.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts /storage/emulated/0/123vidwocache/2.ts";
 
         String[] commands = text.split(" ");
 
@@ -193,7 +205,7 @@ public class TrimVideoUtils {
     public static void test2(OnCallBack onCallBack) {
 //        ffmpeg -i "concat:input1.ts|input2.ts|input3.ts" -c copy -bsf:a aac_adtstoasc -movflags +faststart output.mp4
 
-        String text = "ffmpeg -i \"concat:/storage/emulated/0/123vidwocache/VID_20190920_174159.ts\" -c copy -bsf:a aac_adtstoasc -movflags +faststart /storage/emulated/0/123vidwocache/output.mp4";
+        String text = "ffmpeg -i \"concat:/storage/emulated/0/123vidwocache/1.ts|/storage/emulated/0/123vidwocache/2.ts\" -acodec copy -vcodec copy -absf aac_adtstoasc /storage/emulated/0/123vidwocache/output.mp4";
 
         String[] commands = text.split(" ");
 
@@ -221,6 +233,95 @@ public class TrimVideoUtils {
         });
     }
 
+    public static void test3(OnCallBack onCallBack) {
+//        ffmpeg -i /storage/emulated/0/123vidwocache/VID_20190921_163637.mp4 -c:v libx264 -crf 19 -preset slow -c:a aac -b:a 192k -ac 2 /storage/emulated/0/123vidwocache/output.mp4
+//        ffmpeg -y -i /storage/emulated/0/123vidwocache/VID_20190921_163630.mp4 -b 2097k -r 30 -vcodec libx264 -preset superfast /storage/emulated/0/123vidwocache/output1.mp4.mp4
+        String text = "ffmpeg -i /storage/emulated/0/123vidwocache/VID_20190921_182148.mp4 -c:v libx264 -crf 19 -preset superfast -c:a aac -b:a 192k -ac 2 /storage/emulated/0/123vidwocache/output1.mp4";
+
+        String[] commands = text.split(" ");
+
+        RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+            @Override
+            public void onFinish() {
+                onCallBack.onSuccess();
+            }
+
+            @Override
+            public void onProgress(int progress, long progressTime) {
+                onCallBack.onProgress(progress);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+
+            @Override
+            public void onError(String message) {
+                L.d("解析错误 = " + message);
+                onCallBack.onFail();
+            }
+        });
+    }
+
+    public static void mergeMP4() {
+        List<String> fileList = new ArrayList<String>();
+        List<com.googlecode.mp4parser.authoring.Movie> moviesList = new LinkedList<>();
+//添加需要合并的文件
+        fileList.add("/storage/emulated/0/123vidwocache/VID_20190921_130227.mp4");
+        fileList.add("/storage/emulated/0/123vidwocache/VID_20190921_130233.mp4");
+
+        try {
+            for (String file : fileList) {
+                moviesList.add(MovieCreator.build(file));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        List<Track> videoTracks = new LinkedList<Track>();
+        List<Track> audioTracks = new LinkedList<Track>();
+        for (com.googlecode.mp4parser.authoring.Movie m : moviesList) {
+            for (Track t : m.getTracks()) {
+                if (t.getHandler().equals("soun")) {
+                    audioTracks.add(t);
+                }
+                if (t.getHandler().equals("vide")) {
+                    videoTracks.add(t);
+                }
+            }
+        }
+
+        Movie result = new Movie();
+
+        try {
+            if (audioTracks.size() > 0) {
+                result.addTrack(new AppendTrack(audioTracks.toArray(new Track[audioTracks.size()])));
+            }
+            if (videoTracks.size() > 0) {
+                result.addTrack(new AppendTrack(videoTracks.toArray(new Track[videoTracks.size()])));
+            }
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        Container out = new DefaultMp4Builder().build(result);
+
+        try {
+//输出合并后的文件
+            FileChannel fc = new RandomAccessFile("/storage/emulated/0/123vidwocache/123456.mp4", "rw").getChannel();
+            out.writeContainer(fc);
+            fc.close();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        moviesList.clear();
+        fileList.clear();
+        L.d("合成完成");
+    }
 
     public static String stringForTime(int timeMs) {
         int totalSeconds = timeMs / 1000;

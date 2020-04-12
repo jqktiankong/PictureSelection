@@ -5,10 +5,8 @@ import android.content.Intent;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.media.AudioManager;
-import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -22,7 +20,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
-import com.jqk.pictureselectorlibrary.util.FileUtils;
 import com.jqk.pictureselectorlibrary.util.L;
 import com.jqk.pictureselectorlibrary.util.TrimVideoUtils;
 
@@ -68,8 +65,6 @@ public class RecordVideoActivity extends AppCompatActivity {
         fileList = new ArrayList<>();
 
         getCameraInfo();
-
-        ((AudioManager) getSystemService(Context.AUDIO_SERVICE)).setStreamMute(AudioManager.STREAM_SYSTEM, true);
 
         start.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -260,22 +255,41 @@ public class RecordVideoActivity extends AppCompatActivity {
 //            }
 //        });
 
-        TrimVideoUtils.test2(new TrimVideoUtils.OnCallBack() {
-            @Override
-            public void onSuccess() {
-                L.d("onSuccess");
-            }
+//        TrimVideoUtils.test2(new TrimVideoUtils.OnCallBack() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("onSuccess");
+//            }
+//
+//            @Override
+//            public void onFail() {
+//                L.d("onFail");
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                L.d("progress = " + progress);
+//            }
+//        });
 
-            @Override
-            public void onFail() {
-                L.d("onFail");
-            }
+//        TrimVideoUtils.mergeMP4();
 
-            @Override
-            public void onProgress(float progress) {
-                L.d("progress = " + progress);
-            }
-        });
+//        TrimVideoUtils.test3(new TrimVideoUtils.OnCallBack() {
+//            @Override
+//            public void onSuccess() {
+//                L.d("onSuccess");
+//            }
+//
+//            @Override
+//            public void onFail() {
+//                L.d("onFail");
+//            }
+//
+//            @Override
+//            public void onProgress(float progress) {
+//                L.d("progress = " + progress);
+//            }
+//        });
     }
 
     @Override

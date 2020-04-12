@@ -63,7 +63,7 @@ public class MediaRecorderManager {
 
 
                 // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
-                mediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+                mediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_480P));
 
                 // Step 4: Set output file
                 outputMediaFile = getOutputMediaFile(MEDIA_TYPE_VIDEO);
