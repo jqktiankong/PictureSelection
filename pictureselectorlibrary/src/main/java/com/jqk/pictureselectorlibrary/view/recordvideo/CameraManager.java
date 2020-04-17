@@ -1,5 +1,6 @@
 package com.jqk.pictureselectorlibrary.view.recordvideo;
 
+import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.os.Build;
@@ -46,8 +47,8 @@ public class CameraManager {
                 }
             }
 
-            parameters.setPreviewSize(size.height, size.width);
-
+            parameters.setPreviewSize(size.width, size.height);
+            parameters.setPreviewFormat(ImageFormat.NV21);
             camera.setDisplayOrientation(90);
             camera.setParameters(parameters);
         }

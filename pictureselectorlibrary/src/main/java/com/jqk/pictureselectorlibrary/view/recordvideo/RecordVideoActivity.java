@@ -1,12 +1,15 @@
 package com.jqk.pictureselectorlibrary.view.recordvideo;
 
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.hardware.Camera;
-import android.media.AudioManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -21,13 +24,37 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.util.L;
-import com.jqk.pictureselectorlibrary.util.TrimVideoUtils;
+import com.jqk.pictureselectorlibrary.view.record.data.FrameToRecord;
+import com.jqk.pictureselectorlibrary.view.record.data.RecordFragment;
+import com.jqk.pictureselectorlibrary.view.record.util.CameraHelper;
 
+import org.bytedeco.javacpp.avcodec;
+import org.bytedeco.javacpp.avutil;
+import org.bytedeco.javacv.FFmpegFrameFilter;
+import org.bytedeco.javacv.FFmpegFrameRecorder;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.FrameFilter;
+
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Stack;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static java.lang.Thread.State.WAITING;
 
 public class RecordVideoActivity extends AppCompatActivity {
+    private static final int PREFERRED_PREVIEW_WIDTH = 1920;
+    private static final int PREFERRED_PREVIEW_HEIGHT = 1080;
+
+    // both in milliseconds
+    private static final long MIN_VIDEO_LENGTH = 1 * 1000;
+    private static final long MAX_VIDEO_LENGTH = 90 * 1000;
+
     private SurfaceView surfaceView;
     private Button start;
     private Button stop;
@@ -41,10 +68,28 @@ public class RecordVideoActivity extends AppCompatActivity {
     private int selectedCameraIndex = -1;
 
     private int cameraWidth, cameraHeight;
-    private int parentViewWidth, parentViewHeight;
     private Camera.Size size;
 
-    private List<String> fileList;
+    // FFmpeg录制视频
+    private FFmpegFrameRecorder mFrameRecorder;
+    private VideoRecordThread mVideoRecordThread;
+    private AudioRecordThread mAudioRecordThread;
+    private LinkedBlockingQueue<FrameToRecord> mFrameToRecordQueue;
+    private LinkedBlockingQueue<FrameToRecord> mRecycledFrameQueue;
+    private int mPreviewWidth = PREFERRED_PREVIEW_WIDTH;
+    private int mPreviewHeight = PREFERRED_PREVIEW_HEIGHT;
+    private volatile boolean mRecording = false;
+    private int mFrameToRecordCount;
+    private int mFrameRecordedCount;
+    private long mTotalProcessFrameTime;
+    private Stack<RecordFragment> mRecordFragments;
+    private File mVideo;
+    private int videoWidth = 1920 / 4;
+    private int videoHeight = 1080 / 4;
+    private int sampleAudioRateInHz = 44100;
+    private int frameRate = 30;
+    private int frameDepth = Frame.DEPTH_UBYTE;
+    private int frameChannels = 2;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,31 +107,32 @@ public class RecordVideoActivity extends AppCompatActivity {
         focusView = findViewById(R.id.focus_view);
         parentView = findViewById(R.id.parent_view);
 
-        fileList = new ArrayList<>();
+        // At most buffer 10 Frame
+        mFrameToRecordQueue = new LinkedBlockingQueue<>(10);
+        // At most recycle 2 Frame
+        mRecycledFrameQueue = new LinkedBlockingQueue<>(2);
+        mRecordFragments = new Stack<>();
 
         getCameraInfo();
 
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                fileList = new ArrayList<>();
-                MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
-                fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
+                resumeRecording();
             }
         });
 
         stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MediaRecorderManager.release();
+                pauseRecording();
+                stopRecording();
+                stopRecorder();
                 // 刷新文件管理器
                 Uri localUri = Uri.fromFile(MediaRecorderManager.getOutputMediaFile());
                 Intent localIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, localUri);
                 sendBroadcast(localIntent);
 
-                L.d("filelist = " + fileList.toString());
-
-                MediaRecorderManager.margeVideos(fileList);
             }
         });
 
@@ -203,99 +249,11 @@ public class RecordVideoActivity extends AppCompatActivity {
                 }
             }
         }
-
-//        TrimVideoUtils.mergeVideos("/storage/emulated/0/123vidwocache/filelist.txt", "/storage/emulated/0/123vidwocache/123.mp4", new TrimVideoUtils.OnCallBack() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("onSuccess");
-//            }
-//
-//            @Override
-//            public void onFail() {
-//                L.d("onFail");
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                L.d("progress = " + progress);
-//            }
-//        });
-
-//        TrimVideoUtils.vflipVideo(new TrimVideoUtils.OnCallBack() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("onSuccess");
-//            }
-//
-//            @Override
-//            public void onFail() {
-//                L.d("onFail");
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                L.d("progress = " + progress);
-//            }
-//        });
-
-//        TrimVideoUtils.test1(new TrimVideoUtils.OnCallBack() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("onSuccess");
-//            }
-//
-//            @Override
-//            public void onFail() {
-//                L.d("onFail");
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                L.d("progress = " + progress);
-//            }
-//        });
-
-//        TrimVideoUtils.test2(new TrimVideoUtils.OnCallBack() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("onSuccess");
-//            }
-//
-//            @Override
-//            public void onFail() {
-//                L.d("onFail");
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                L.d("progress = " + progress);
-//            }
-//        });
-
-//        TrimVideoUtils.mergeMP4();
-
-//        TrimVideoUtils.test3(new TrimVideoUtils.OnCallBack() {
-//            @Override
-//            public void onSuccess() {
-//                L.d("onSuccess");
-//            }
-//
-//            @Override
-//            public void onFail() {
-//                L.d("onFail");
-//            }
-//
-//            @Override
-//            public void onProgress(float progress) {
-//                L.d("progress = " + progress);
-//            }
-//        });
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        MediaRecorderManager.release();
         CameraManager.stopAndRelease();
     }
 
@@ -304,16 +262,16 @@ public class RecordVideoActivity extends AppCompatActivity {
             surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {
+                    CameraManager.open(cameraIndex);
+
                     try {
-                        CameraManager.open(cameraIndex);
                         CameraManager.setPreviewDisplay(surfaceView.getHolder());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
-
-                    parentViewWidth = parentView.getWidth();
-                    parentViewHeight = parentView.getHeight();
+                    int parentViewWidth = parentView.getWidth();
+                    int parentViewHeight = parentView.getHeight();
 
 
                     size = CameraManager.getOptimalSize(parentViewHeight, parentViewWidth);
@@ -335,6 +293,12 @@ public class RecordVideoActivity extends AppCompatActivity {
                     L.d("处理后parentViewWidth = " + parentViewWidth);
                     L.d("处理后parentViewHeight = " + parentViewHeight);
 
+//                    mPreviewWidth = parentViewWidth;
+//                    mPreviewHeight = parentViewHeight;
+
+//                    videoWidth = parentViewWidth;
+//                    videoHeight = parentViewHeight;
+
                     ViewGroup.LayoutParams lp = surfaceView.getLayoutParams();
                     lp.width = parentViewWidth;
                     lp.height = parentViewHeight;
@@ -350,8 +314,14 @@ public class RecordVideoActivity extends AppCompatActivity {
                     L.d("cameraWidth = " + width);
                     L.d("cameraHeight = " + height);
 
-                    CameraManager.setParameters(size);
-                    CameraManager.startPreview();
+//                    CameraManager.setParameters(size);
+                    initRecorder();
+                    startPreview();
+
+                    startRecorder();
+                    startRecording();
+
+//                    CameraManager.getInstance().startPreview();
                 }
 
                 @Override
@@ -372,7 +342,6 @@ public class RecordVideoActivity extends AppCompatActivity {
                 selectedCameraIndex = backCameraIndex;
 
                 try {
-                    MediaRecorderManager.release();
                     CameraManager.stopAndRelease();
                     CameraManager.open(backCameraIndex);
                     CameraManager.setPreviewDisplay(surfaceView.getHolder());
@@ -381,14 +350,11 @@ public class RecordVideoActivity extends AppCompatActivity {
                 }
                 CameraManager.setParameters(size);
                 CameraManager.startPreview();
-                MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
-                fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
 
             } else if (selectedCameraIndex == backCameraIndex) {
                 selectedCameraIndex = fontCameraIndex;
 
                 try {
-                    MediaRecorderManager.release();
                     CameraManager.stopAndRelease();
                     CameraManager.open(fontCameraIndex);
                     CameraManager.setPreviewDisplay(surfaceView.getHolder());
@@ -397,8 +363,6 @@ public class RecordVideoActivity extends AppCompatActivity {
                 }
                 CameraManager.setParameters(size);
                 CameraManager.startPreview();
-                MediaRecorderManager.prepareAndStart(size, surfaceView.getHolder().getSurface(), selectedCameraIndex);
-                fileList.add(MediaRecorderManager.getOutputMediaFile().getAbsolutePath());
             } else {
                 L.d("切换前后摄像头失败");
             }
@@ -418,6 +382,454 @@ public class RecordVideoActivity extends AppCompatActivity {
                 backCameraIndex = i;
 
             }
+        }
+    }
+
+    private void initRecorder() {
+        L.d("init mFrameRecorder");
+
+        mVideo = MediaRecorderManager.getOutputMediaFile(MediaRecorderManager.MEDIA_TYPE_VIDEO);
+        L.d("Output Video: " + mVideo);
+
+        mFrameRecorder = new FFmpegFrameRecorder(mVideo, videoWidth, videoHeight, 1);
+        mFrameRecorder.setFormat("mp4");
+        mFrameRecorder.setSampleRate(sampleAudioRateInHz);
+        mFrameRecorder.setFrameRate(frameRate);
+
+        // Use H264
+        mFrameRecorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+        // See: https://trac.ffmpeg.org/wiki/Encode/H.264#crf
+        /*
+         * The range of the quantizer scale is 0-51: where 0 is lossless, 23 is default, and 51 is worst possible. A lower value is a higher quality and a subjectively sane range is 18-28. Consider 18 to be visually lossless or nearly so: it should look the same or nearly the same as the input but it isn't technically lossless.
+         * The range is exponential, so increasing the CRF value +6 is roughly half the bitrate while -6 is roughly twice the bitrate. General usage is to choose the highest CRF value that still provides an acceptable quality. If the output looks good, then try a higher value and if it looks bad then choose a lower value.
+         */
+        mFrameRecorder.setVideoOption("crf", "28");
+        mFrameRecorder.setVideoOption("preset", "superfast");
+        mFrameRecorder.setVideoOption("tune", "zerolatency");
+
+        L.d("mFrameRecorder initialize success");
+    }
+
+    private void startPreview() {
+        if (CameraManager.getInstance() == null) {
+            L.d("startPreview return");
+            return;
+        }
+        L.d("startPreview");
+
+        Camera.Parameters parameters = CameraManager.getInstance().getParameters();
+        List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
+        Camera.Size previewSize = CameraHelper.getOptimalSize(previewSizes,
+                PREFERRED_PREVIEW_WIDTH, PREFERRED_PREVIEW_HEIGHT);
+        // if changed, reassign values and request layout
+        if (mPreviewWidth != previewSize.width || mPreviewHeight != previewSize.height) {
+            mPreviewWidth = previewSize.width;
+            mPreviewHeight = previewSize.height;
+
+//            ViewGroup.LayoutParams lp = surfaceView.getLayoutParams();
+//            lp.width = mPreviewWidth;
+//            lp.height = mPreviewHeight;
+//
+//            surfaceView.setLayoutParams(lp);
+//            surfaceView.requestLayout();
+        }
+        parameters.setPreviewSize(size.height, size.width);
+        if (parameters.getSupportedFocusModes().contains(
+                Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+        }
+        CameraManager.getInstance().setParameters(parameters);
+
+        CameraManager.getInstance().setDisplayOrientation(CameraHelper.getCameraDisplayOrientation(
+                this, selectedCameraIndex));
+
+        // YCbCr_420_SP (NV21) format
+        byte[] bufferByte = new byte[1920 * 1080 * 3 / 2];
+        CameraManager.getInstance().addCallbackBuffer(bufferByte);
+        CameraManager.getInstance().setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
+
+            private long lastPreviewFrameTime;
+
+            @Override
+            public void onPreviewFrame(byte[] data, Camera camera) {
+                L.d("onPreviewFrame");
+                long thisPreviewFrameTime = System.currentTimeMillis();
+                if (lastPreviewFrameTime > 0) {
+                    L.d("Preview frame interval: " + (thisPreviewFrameTime - lastPreviewFrameTime) + "ms");
+                }
+                lastPreviewFrameTime = thisPreviewFrameTime;
+
+                L.d("startPreview1");
+                // get video data
+                if (mRecording) {
+                    L.d("startPreview2");
+                    if (mAudioRecordThread == null || !mAudioRecordThread.isRunning()) {
+                        L.d("startPreview3");
+                        // wait for AudioRecord to init and start
+                        mRecordFragments.peek().setStartTimestamp(System.currentTimeMillis());
+                    } else {
+                        L.d("startPreview4");
+                        // pop the current record fragment when calculate total recorded time
+                        RecordFragment curFragment = mRecordFragments.pop();
+                        long recordedTime = calculateTotalRecordedTime(mRecordFragments);
+                        // push it back after calculation
+                        mRecordFragments.push(curFragment);
+                        long curRecordedTime = System.currentTimeMillis()
+                                - curFragment.getStartTimestamp() + recordedTime;
+                        // check if exceeds time limit
+//                        if (curRecordedTime > MAX_VIDEO_LENGTH) {
+//                            pauseRecording();
+//                            new FFmpegRecordActivity.FinishRecordingTask().execute();
+//                            return;
+//                        }
+
+                        long timestamp = 1000 * curRecordedTime;
+                        Frame frame;
+                        FrameToRecord frameToRecord = mRecycledFrameQueue.poll();
+                        if (frameToRecord != null) {
+                            frame = frameToRecord.getFrame();
+                            frameToRecord.setTimestamp(timestamp);
+                        } else {
+                            frame = new Frame(mPreviewWidth, mPreviewHeight, frameDepth, frameChannels);
+                            frameToRecord = new FrameToRecord(timestamp, frame);
+                        }
+                        ((ByteBuffer) frame.image[0].position(0)).put(data);
+
+                        if (mFrameToRecordQueue.offer(frameToRecord)) {
+                            L.d("mFrameToRecordCount = " + mFrameToRecordCount);
+                            mFrameToRecordCount++;
+                        }
+                    }
+                }
+                CameraManager.getInstance().addCallbackBuffer(data);
+            }
+        });
+        try {
+            CameraManager.setPreviewDisplay(surfaceView.getHolder());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        CameraManager.getInstance().startPreview();
+    }
+
+    private void stopPreview() {
+        if (CameraManager.getInstance() != null) {
+            CameraManager.getInstance().stopPreview();
+            CameraManager.getInstance().setPreviewCallbackWithBuffer(null);
+        }
+    }
+
+    private void startRecorder() {
+        try {
+            mFrameRecorder.start();
+        } catch (FFmpegFrameRecorder.Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopRecorder() {
+        if (mFrameRecorder != null) {
+            try {
+                mFrameRecorder.stop();
+            } catch (FFmpegFrameRecorder.Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        mRecordFragments.clear();
+    }
+
+    private void resumeRecording() {
+        if (!mRecording) {
+            RecordFragment recordFragment = new RecordFragment();
+            recordFragment.setStartTimestamp(System.currentTimeMillis());
+            mRecordFragments.push(recordFragment);
+            mRecording = true;
+        }
+    }
+
+    private void startRecording() {
+        mAudioRecordThread = new RecordVideoActivity.AudioRecordThread();
+        mAudioRecordThread.start();
+        mVideoRecordThread = new RecordVideoActivity.VideoRecordThread();
+        mVideoRecordThread.start();
+    }
+
+    private void stopRecording() {
+        if (mAudioRecordThread != null) {
+            if (mAudioRecordThread.isRunning()) {
+                mAudioRecordThread.stopRunning();
+            }
+        }
+
+        if (mVideoRecordThread != null) {
+            if (mVideoRecordThread.isRunning()) {
+                mVideoRecordThread.stopRunning();
+            }
+        }
+
+        try {
+            if (mAudioRecordThread != null) {
+                mAudioRecordThread.join();
+            }
+            if (mVideoRecordThread != null) {
+                mVideoRecordThread.join();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        mAudioRecordThread = null;
+        mVideoRecordThread = null;
+
+
+        mFrameToRecordQueue.clear();
+        mRecycledFrameQueue.clear();
+    }
+
+    private void pauseRecording() {
+        if (mRecording) {
+            mRecordFragments.peek().setEndTimestamp(System.currentTimeMillis());
+            mRecording = false;
+        }
+    }
+
+    private long calculateTotalRecordedTime(Stack<RecordFragment> recordFragments) {
+        long recordedTime = 0;
+        for (RecordFragment recordFragment : recordFragments) {
+            recordedTime += recordFragment.getDuration();
+        }
+        return recordedTime;
+    }
+
+    class AudioRecordThread extends RecordVideoActivity.RunningThread {
+        private AudioRecord mAudioRecord;
+        private ShortBuffer audioData;
+
+        public AudioRecordThread() {
+            int bufferSize = AudioRecord.getMinBufferSize(sampleAudioRateInHz,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+            mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleAudioRateInHz,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
+
+            audioData = ShortBuffer.allocate(bufferSize);
+        }
+
+        @Override
+        public void run() {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
+
+            L.d("mAudioRecord startRecording");
+            mAudioRecord.startRecording();
+
+            isRunning = true;
+            /* ffmpeg_audio encoding loop */
+            while (isRunning) {
+                if (mRecording && mFrameRecorder != null) {
+                    int bufferReadResult = mAudioRecord.read(audioData.array(), 0, audioData.capacity());
+                    audioData.limit(bufferReadResult);
+                    if (bufferReadResult > 0) {
+                        L.d("bufferReadResult: " + bufferReadResult);
+                        try {
+                            mFrameRecorder.recordSamples(audioData);
+                        } catch (FFmpegFrameRecorder.Exception e) {
+                            L.d(e.getMessage());
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+            L.d("mAudioRecord stopRecording");
+            mAudioRecord.stop();
+            mAudioRecord.release();
+            mAudioRecord = null;
+            L.d("mAudioRecord released");
+        }
+    }
+
+    class VideoRecordThread extends RecordVideoActivity.RunningThread {
+        @Override
+        public void run() {
+            int previewWidth = mPreviewWidth;
+            int previewHeight = mPreviewHeight;
+
+            List<String> filters = new ArrayList<>();
+            // Transpose
+            String transpose = null;
+            String hflip = null;
+            String vflip = null;
+            String crop = null;
+            String scale = null;
+            int cropWidth;
+            int cropHeight;
+            Camera.CameraInfo info = new Camera.CameraInfo();
+            Camera.getCameraInfo(selectedCameraIndex, info);
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            switch (rotation) {
+                case Surface.ROTATION_0:
+                    switch (info.orientation) {
+                        case 270:
+                            if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                                transpose = "transpose=clock_flip"; // Same as preview display
+                            } else {
+                                transpose = "transpose=cclock"; // Mirrored horizontally as preview display
+                            }
+                            break;
+                        case 90:
+                            if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                                transpose = "transpose=cclock_flip"; // Same as preview display
+                            } else {
+                                transpose = "transpose=clock"; // Mirrored horizontally as preview display
+                            }
+                            break;
+                    }
+                    cropWidth = previewHeight;
+                    cropHeight = cropWidth * videoHeight / videoWidth;
+                    crop = String.format("crop=%d:%d:%d:%d",
+                            cropWidth, cropHeight,
+                            (previewHeight - cropWidth) / 2, (previewWidth - cropHeight) / 2);
+                    // swap width and height
+                    scale = String.format("scale=%d:%d", videoHeight, videoWidth);
+                    break;
+                case Surface.ROTATION_90:
+                case Surface.ROTATION_270:
+                    switch (rotation) {
+                        case Surface.ROTATION_90:
+                            // landscape-left
+                            switch (info.orientation) {
+                                case 270:
+                                    if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                                        hflip = "hflip";
+                                    }
+                                    break;
+                            }
+                            break;
+                        case Surface.ROTATION_270:
+                            // landscape-right
+                            switch (info.orientation) {
+                                case 90:
+                                    if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                                        hflip = "hflip";
+                                        vflip = "vflip";
+                                    }
+                                    break;
+                                case 270:
+                                    if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                                        vflip = "vflip";
+                                    }
+                                    break;
+                            }
+                            break;
+                    }
+                    cropHeight = previewHeight;
+                    cropWidth = cropHeight * videoWidth / videoHeight;
+                    crop = String.format("crop=%d:%d:%d:%d",
+                            cropWidth, cropHeight,
+                            (previewWidth - cropWidth) / 2, (previewHeight - cropHeight) / 2);
+                    scale = String.format("scale=%d:%d", videoWidth, videoHeight);
+                    break;
+                case Surface.ROTATION_180:
+                    break;
+            }
+//            // transpose
+//            if (transpose != null) {
+//                filters.add(transpose);
+//            }
+//            // horizontal flip
+//            if (hflip != null) {
+//                filters.add(hflip);
+//            }
+//            // vertical flip
+//            if (vflip != null) {
+//                filters.add(vflip);
+//            }
+//            // crop
+//            if (crop != null) {
+//                filters.add(crop);
+//            }
+            // scale (to designated size)
+            if (scale != null) {
+                filters.add(scale);
+            }
+
+            FFmpegFrameFilter frameFilter = new FFmpegFrameFilter(TextUtils.join(",", filters),
+                    previewWidth, previewHeight);
+            frameFilter.setPixelFormat(avutil.AV_PIX_FMT_NV21);
+            frameFilter.setFrameRate(frameRate);
+            try {
+                frameFilter.start();
+            } catch (FrameFilter.Exception e) {
+                e.printStackTrace();
+            }
+
+            isRunning = true;
+            FrameToRecord recordedFrame;
+
+            L.d("1");
+
+            while (isRunning || !mFrameToRecordQueue.isEmpty()) {
+                L.d("2");
+                try {
+                    recordedFrame = mFrameToRecordQueue.take();
+                } catch (InterruptedException ie) {
+                    ie.printStackTrace();
+                    try {
+                        frameFilter.stop();
+                    } catch (FrameFilter.Exception e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+
+                if (mFrameRecorder != null) {
+                    L.d("3");
+                    long timestamp = recordedFrame.getTimestamp();
+                    if (timestamp > mFrameRecorder.getTimestamp()) {
+                        mFrameRecorder.setTimestamp(timestamp);
+                    }
+                    long startTime = System.currentTimeMillis();
+//                    Frame filteredFrame = recordedFrame.getFrame();
+                    Frame filteredFrame = null;
+                    try {
+                        frameFilter.push(recordedFrame.getFrame());
+                        filteredFrame = frameFilter.pull();
+                    } catch (FrameFilter.Exception e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        mFrameRecorder.record(filteredFrame);
+                    } catch (FFmpegFrameRecorder.Exception e) {
+                        e.printStackTrace();
+                    }
+                    long endTime = System.currentTimeMillis();
+                    long processTime = endTime - startTime;
+                    mTotalProcessFrameTime += processTime;
+                    L.d("This frame process time: " + processTime + "ms");
+                    long totalAvg = mTotalProcessFrameTime / ++mFrameRecordedCount;
+                    L.d("Avg frame process time: " + totalAvg + "ms");
+                }
+                L.d(mFrameRecordedCount + " / " + mFrameToRecordCount);
+                mRecycledFrameQueue.offer(recordedFrame);
+            }
+        }
+
+        public void stopRunning() {
+            super.stopRunning();
+            if (getState() == WAITING) {
+                interrupt();
+            }
+        }
+    }
+
+    class RunningThread extends Thread {
+        boolean isRunning;
+
+        public boolean isRunning() {
+            return isRunning;
+        }
+
+        public void stopRunning() {
+            this.isRunning = false;
         }
     }
 }

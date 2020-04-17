@@ -21,6 +21,8 @@
         <activity android:name=".editPicture.EditPictureActivity"></activity>
         <activity android:name=".view.show.ShowVideoActivity"></activity>
         <activity android:name=".view.recordvideo.RecordVideoActivity"></activity>
+        <activity android:name=".view.record.FFmpegRecordActivity"></activity>
+        <activity android:name=".view.record.PlaybackActivity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
