@@ -10,6 +10,7 @@ import android.widget.Button;
 
 import com.jqk.pictureselectorlibrary.view.record.FFmpegRecordActivity;
 import com.jqk.pictureselectorlibrary.view.recordvideo.RecordVideoActivity;
+import com.jqk.pictureselectorlibrary.view.recordvideo.RecordVideoActivity2;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -50,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent();
-                intent.setClass(MainActivity.this, RecordVideoActivity.class);
+                intent.setClass(MainActivity.this, FFmpegRecordActivity.class);
                 startActivity(intent);
             }
         });
