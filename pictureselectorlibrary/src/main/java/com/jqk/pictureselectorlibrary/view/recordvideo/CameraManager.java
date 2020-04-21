@@ -49,7 +49,8 @@ public class CameraManager {
 
             // 由于是旋转前的相机，所以要竖屏宽高要交换
             parameters.setPreviewSize(size.height, size.width);
-//            parameters.setPreviewFormat(ImageFormat.NV21);
+            parameters.setPreviewFormat(ImageFormat.NV21);
+            parameters.setRecordingHint(true);
             camera.setDisplayOrientation(90);
             camera.setParameters(parameters);
         }

@@ -16,6 +16,8 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -25,6 +27,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.jqk.pictureselectorlibrary.R;
+import com.jqk.pictureselectorlibrary.util.L;
 import com.jqk.pictureselectorlibrary.view.record.data.FrameToRecord;
 import com.jqk.pictureselectorlibrary.view.record.data.RecordFragment;
 import com.jqk.pictureselectorlibrary.view.record.util.CameraHelper;
@@ -59,8 +62,8 @@ public class FFmpegRecordActivity extends AppCompatActivity implements
 //    private static final int PREFERRED_PREVIEW_WIDTH = 640;
 //    private static final int PREFERRED_PREVIEW_HEIGHT = 480;
 
-    private static final int PREFERRED_PREVIEW_WIDTH = 1280;
-    private static final int PREFERRED_PREVIEW_HEIGHT = 960;
+    private static final int PREFERRED_PREVIEW_WIDTH = 1920;
+    private static final int PREFERRED_PREVIEW_HEIGHT = 1080;
 
     // both in milliseconds
     private static final long MIN_VIDEO_LENGTH = 1 * 1000;
@@ -94,8 +97,8 @@ public class FFmpegRecordActivity extends AppCompatActivity implements
     // Output video size
 //    private int videoWidth = 320;
 //    private int videoHeight = 240;
-    private int videoWidth = 320 * 3;
-    private int videoHeight = 240 * 3;
+    private int videoWidth = 1920;
+    private int videoHeight = 1080;
     private int frameRate = 30;
     private int frameDepth = Frame.DEPTH_UBYTE;
     private int frameChannels = 2;
@@ -106,6 +109,9 @@ public class FFmpegRecordActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_ffmpeg_record);
         mPreview = findViewById(R.id.camera_preview);
         mBtnResumeOrPause = findViewById(R.id.btn_resume_or_pause);
@@ -305,6 +311,8 @@ public class FFmpegRecordActivity extends AppCompatActivity implements
             mPreview.setPreviewSize(width, height);
         } else {
             // Swap width and height
+            L.d("height = " + height);
+            L.d("width = " + width);
             mPreview.setPreviewSize(height, width);
         }
     }
