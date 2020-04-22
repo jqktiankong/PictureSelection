@@ -49,8 +49,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import static java.lang.Thread.State.WAITING;
 
 public class RecordVideoActivity2 extends AppCompatActivity {
-    private static final int PREFERRED_PREVIEW_WIDTH = 1920;
-    private static final int PREFERRED_PREVIEW_HEIGHT = 1080;
+    private static final int PREFERRED_PREVIEW_WIDTH = 960;
+    private static final int PREFERRED_PREVIEW_HEIGHT = 540;
 
     // both in milliseconds
     private static final long MIN_VIDEO_LENGTH = 1 * 1000;
@@ -89,7 +89,7 @@ public class RecordVideoActivity2 extends AppCompatActivity {
     private int videoHeight = 0;
     private int videoZoom = 1;
     private int sampleAudioRateInHz = 44100;
-    private int frameRate = 60;
+    private int frameRate = 30;
     private int frameDepth = Frame.DEPTH_BYTE;
     private int frameChannels = 2;
 
@@ -235,9 +235,9 @@ public class RecordVideoActivity2 extends AppCompatActivity {
 
     public void init() {
         // At most buffer 10 Frame
-        mFrameToRecordQueue = new LinkedBlockingQueue<>(1024);
+        mFrameToRecordQueue = new LinkedBlockingQueue<>(10);
         // At most recycle 2 Frame
-        mRecycledFrameQueue = new LinkedBlockingQueue<>(1024);
+        mRecycledFrameQueue = new LinkedBlockingQueue<>(2);
         mRecordFragments = new Stack<>();
     }
 

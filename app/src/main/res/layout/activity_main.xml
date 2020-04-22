@@ -25,4 +25,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="录像" />
+
+    <Button
+        android:id="@+id/camera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="摄像头"></Button>
 </LinearLayout>
