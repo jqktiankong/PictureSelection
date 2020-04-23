@@ -57,7 +57,7 @@ public class CameraHandlerThread extends HandlerThread {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-               CameraManager.getInstance().open(index);
+                CameraManager.getInstance().open(index);
                 notifyCameraOpened();
             }
         });
@@ -86,7 +86,7 @@ public class CameraHandlerThread extends HandlerThread {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-               CameraManager.getInstance().releaseCamera();
+                CameraManager.getInstance().releaseCamera();
                 notifyCameraReleased();
             }
         });
@@ -102,8 +102,9 @@ public class CameraHandlerThread extends HandlerThread {
 
     /**
      * 设置预览回调
-     * @param callback  回调
-     * @param buffer    缓冲
+     *
+     * @param callback 回调
+     * @param buffer   缓冲
      */
     public void setPreviewCallbackWithBuffer(final Camera.PreviewCallback callback,
                                              final byte[] buffer) {

@@ -1,7 +1,6 @@
 package com.jqk.pictureselectorlibrary.view.camera;
 
 import android.graphics.ImageFormat;
-import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.view.SurfaceHolder;
 
@@ -46,11 +45,12 @@ public class CameraManager {
             }
         }
 
+        // 获取手机支持的fps
         List<int[]> supportedFps = parameters.getSupportedPreviewFpsRange();
         for (int[] entry : supportedFps) {
             L.d("supportedFps entry[0] = " + entry[0] + ", entry[1] = " + entry[1]);
         }
-
+        // 获取摄像头支持的预览分辨率
         List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
         for (Camera.Size size : sizes) {
             L.d("width = " + size.width + "   height = " + size.height);

@@ -9,6 +9,9 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
 import android.text.TextUtils;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -25,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.util.L;
+import com.jqk.pictureselectorlibrary.view.camera.CameraHandlerThread;
 import com.jqk.pictureselectorlibrary.view.record.data.FrameToRecord;
 import com.jqk.pictureselectorlibrary.view.record.data.RecordFragment;
 import com.jqk.pictureselectorlibrary.view.record.util.CameraHelper;
@@ -85,13 +89,16 @@ public class RecordVideoActivity2 extends AppCompatActivity {
     private long mTotalProcessFrameTime;
     private Stack<RecordFragment> mRecordFragments;
     private File mVideo;
-    private int videoWidth = 0;
-    private int videoHeight = 0;
+    private int videoWidth = 540;
+    private int videoHeight = 960;
     private int videoZoom = 1;
     private int sampleAudioRateInHz = 44100;
     private int frameRate = 30;
     private int frameDepth = Frame.DEPTH_BYTE;
     private int frameChannels = 2;
+
+    // 相机控制线程
+    private CameraHandlerThread mCameraThread;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -101,6 +108,8 @@ public class RecordVideoActivity2 extends AppCompatActivity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_recordvideo);
+
+        mCameraThread = new CameraHandlerThread();
 
         init();
         initView();
@@ -235,9 +244,9 @@ public class RecordVideoActivity2 extends AppCompatActivity {
 
     public void init() {
         // At most buffer 10 Frame
-        mFrameToRecordQueue = new LinkedBlockingQueue<>(10);
+        mFrameToRecordQueue = new LinkedBlockingQueue<>(1024);
         // At most recycle 2 Frame
-        mRecycledFrameQueue = new LinkedBlockingQueue<>(2);
+        mRecycledFrameQueue = new LinkedBlockingQueue<>(1024);
         mRecordFragments = new Stack<>();
     }
 
@@ -255,10 +264,16 @@ public class RecordVideoActivity2 extends AppCompatActivity {
             surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {
-                    CameraManager.open(cameraIndex);
+                    mCameraThread.openCamera(selectedCameraIndex);
+                    mCameraThread.setPreviewSurface(holder);
 
                     try {
-                        CameraManager.setPreviewDisplay(surfaceView.getHolder());
+
+                        SurfaceHolder surfaceHolder = surfaceView.getHolder();
+                        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+                        CameraManager.setPreviewDisplay(surfaceHolder);
+
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -267,21 +282,21 @@ public class RecordVideoActivity2 extends AppCompatActivity {
                     int parentViewHeight = parentView.getHeight();
 
 
-                    size = CameraManager.getOptimalSize(parentViewHeight, parentViewWidth);
-//                    // 竖屏交换宽高
-                    int a = size.width;
-                    int b = size.height;
-                    size.width = b;
-                    size.height = a;
-
-                    L.d("size.width = " + size.width);
-                    L.d("size.height = " + size.height);
-                    // 防止图像变形
-                    if (parentViewWidth > size.width) {
-                        parentViewHeight = size.height / size.width * parentViewWidth;
-                    } else if (parentViewHeight > size.height) {
-                        parentViewWidth = (int) (((float) size.width) / size.height * parentViewHeight);
-                    }
+//                    size = CameraManager.getOptimalSize(parentViewHeight, parentViewWidth);
+////                    // 竖屏交换宽高
+//                    int a = size.width;
+//                    int b = size.height;
+//                    size.width = b;
+//                    size.height = a;
+//
+//                    L.d("size.width = " + size.width);
+//                    L.d("size.height = " + size.height);
+//                    // 防止图像变形
+//                    if (parentViewWidth > size.width) {
+//                        parentViewHeight = size.height / size.width * parentViewWidth;
+//                    } else if (parentViewHeight > size.height) {
+//                        parentViewWidth = (int) (((float) size.width) / size.height * parentViewHeight);
+//                    }
 
                     L.d("处理后parentViewWidth = " + parentViewWidth);
                     L.d("处理后parentViewHeight = " + parentViewHeight);
@@ -295,9 +310,6 @@ public class RecordVideoActivity2 extends AppCompatActivity {
 
                     surfaceView.setLayoutParams(lp);
 
-                    videoWidth = parentViewWidth / videoZoom;
-                    videoHeight = parentViewHeight / videoZoom;
-
                     initRecorder();
                 }
 
@@ -309,7 +321,7 @@ public class RecordVideoActivity2 extends AppCompatActivity {
                     L.d("cameraWidth = " + width);
                     L.d("cameraHeight = " + height);
 
-                    CameraManager.setParameters(size);
+//                    CameraManager.setParameters(size);
 
                     startPreview();
 
@@ -410,7 +422,6 @@ public class RecordVideoActivity2 extends AppCompatActivity {
         mFrameRecorder.setFormat("mp4");
         mFrameRecorder.setSampleRate(sampleAudioRateInHz);
         mFrameRecorder.setFrameRate(frameRate);
-        mFrameRecorder.setVideoBitrate(videoWidth * videoHeight);
 
         // Use H264
         mFrameRecorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
@@ -428,67 +439,60 @@ public class RecordVideoActivity2 extends AppCompatActivity {
     }
 
     private void startPreview() {
-        if (CameraManager.getInstance() == null) {
-            L.d("startPreview return");
-            return;
-        }
-        // YCbCr_420_SP (NV21) format
-        byte[] bufferByte = new byte[mPreviewWidth * mPreviewHeight * 3 / 2];
-        new Thread(new Runnable() {
+//        if (CameraManager.getInstance() == null) {
+//            L.d("startPreview return");
+//            return;
+//        }
+
+        byte[] bufferByte = new byte[960 * 540 * 3 / 2];
+
+        mCameraThread.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
+            private long lastPreviewFrameTime;
             @Override
-            public void run() {
-                CameraManager.getInstance().addCallbackBuffer(bufferByte);
-                CameraManager.getInstance().setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
+            public void onPreviewFrame(byte[] data, Camera camera) {
+                long thisPreviewFrameTime = System.currentTimeMillis();
+                if (lastPreviewFrameTime > 0) {
+                    L.d("Preview frame interval: " + (thisPreviewFrameTime - lastPreviewFrameTime) + "ms");
+                }
+                lastPreviewFrameTime = thisPreviewFrameTime;
 
-                    private long lastPreviewFrameTime;
-
-                    @Override
-                    public void onPreviewFrame(byte[] data, Camera camera) {
-                        long thisPreviewFrameTime = System.currentTimeMillis();
-                        if (lastPreviewFrameTime > 0) {
-                            L.d("Preview frame interval: " + (thisPreviewFrameTime - lastPreviewFrameTime) + "ms");
+                // get video data
+                if (mRecording) {
+                    if (mAudioRecordThread == null || !mAudioRecordThread.isRunning()) {
+                        // wait for AudioRecord to init and start
+                        mRecordFragments.peek().setStartTimestamp(System.currentTimeMillis());
+                    } else {
+                        // pop the current record fragment when calculate total recorded time
+                        RecordFragment curFragment = mRecordFragments.pop();
+                        long recordedTime = calculateTotalRecordedTime(mRecordFragments);
+                        // push it back after calculation
+                        mRecordFragments.push(curFragment);
+                        long curRecordedTime = System.currentTimeMillis()
+                                - curFragment.getStartTimestamp() + recordedTime;
+                        L.d("curRecordedTime = " + curRecordedTime);
+                        long timestamp = 1000 * curRecordedTime;
+                        Frame frame;
+                        FrameToRecord frameToRecord = mRecycledFrameQueue.poll();
+                        if (frameToRecord != null) {
+                            frame = frameToRecord.getFrame();
+                            frameToRecord.setTimestamp(timestamp);
+                        } else {
+                            frame = new Frame(mPreviewWidth, mPreviewHeight, frameDepth, frameChannels);
+                            frameToRecord = new FrameToRecord(timestamp, frame);
                         }
-                        lastPreviewFrameTime = thisPreviewFrameTime;
+                        ((ByteBuffer) frame.image[0].position(0)).put(data);
 
-                        // get video data
-                        if (mRecording) {
-                            if (mAudioRecordThread == null || !mAudioRecordThread.isRunning()) {
-                                // wait for AudioRecord to init and start
-                                mRecordFragments.peek().setStartTimestamp(System.currentTimeMillis());
-                            } else {
-                                // pop the current record fragment when calculate total recorded time
-                                RecordFragment curFragment = mRecordFragments.pop();
-                                long recordedTime = calculateTotalRecordedTime(mRecordFragments);
-                                // push it back after calculation
-                                mRecordFragments.push(curFragment);
-                                long curRecordedTime = System.currentTimeMillis()
-                                        - curFragment.getStartTimestamp() + recordedTime;
-                                L.d("curRecordedTime = " + curRecordedTime);
-                                long timestamp = 1000 * curRecordedTime;
-                                Frame frame;
-                                FrameToRecord frameToRecord = mRecycledFrameQueue.poll();
-                                if (frameToRecord != null) {
-                                    frame = frameToRecord.getFrame();
-                                    frameToRecord.setTimestamp(timestamp);
-                                } else {
-                                    frame = new Frame(mPreviewWidth, mPreviewHeight, frameDepth, frameChannels);
-                                    frameToRecord = new FrameToRecord(timestamp, frame);
-                                }
-                                ((ByteBuffer) frame.image[0].position(0)).put(data);
-
-                                if (mFrameToRecordQueue.offer(frameToRecord)) {
-                                    L.d("mFrameToRecordCount = " + mFrameToRecordCount);
-                                    mFrameToRecordCount++;
-                                }
-                            }
+                        if (mFrameToRecordQueue.offer(frameToRecord)) {
+                            L.d("mFrameToRecordCount = " + mFrameToRecordCount);
+                            mFrameToRecordCount++;
                         }
-                        CameraManager.getInstance().addCallbackBuffer(data);
                     }
-                });
+                }
+                camera.addCallbackBuffer(data);
             }
-        }).start();
+        }, bufferByte);
 
-        CameraManager.getInstance().startPreview();
+        mCameraThread.startPreview();
     }
 
     private void stopPreview() {
@@ -528,9 +532,9 @@ public class RecordVideoActivity2 extends AppCompatActivity {
     }
 
     private void startRecording() {
-        mAudioRecordThread = new RecordVideoActivity2.AudioRecordThread();
+        mAudioRecordThread = new AudioRecordThread();
         mAudioRecordThread.start();
-        mVideoRecordThread = new RecordVideoActivity2.VideoRecordThread();
+        mVideoRecordThread = new VideoRecordThread();
         mVideoRecordThread.start();
     }
 
@@ -580,7 +584,7 @@ public class RecordVideoActivity2 extends AppCompatActivity {
         return recordedTime;
     }
 
-    class AudioRecordThread extends RecordVideoActivity2.RunningThread {
+    class AudioRecordThread extends RunningThread {
         private AudioRecord mAudioRecord;
         private ShortBuffer audioData;
 
@@ -625,7 +629,7 @@ public class RecordVideoActivity2 extends AppCompatActivity {
         }
     }
 
-    class VideoRecordThread extends RecordVideoActivity2.RunningThread {
+    class VideoRecordThread extends RunningThread {
         @Override
         public void run() {
             int previewWidth = mPreviewWidth;
