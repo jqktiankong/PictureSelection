@@ -4,16 +4,12 @@ import android.content.Intent;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.icu.text.AlphabeticIndex;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
 import com.jqk.pictureselectorlibrary.view.camera.CameraActivity;
-import com.jqk.pictureselectorlibrary.view.record.FFmpegRecordActivity;
-import com.jqk.pictureselectorlibrary.view.record.RecordActivity;
 import com.jqk.pictureselectorlibrary.view.recordvideo.RecordVideoActivity;
-import com.jqk.pictureselectorlibrary.view.recordvideo.RecordVideoActivity2;
 
 public class MainActivity extends AppCompatActivity {
 

@@ -23,7 +23,6 @@
         <activity android:name=".view.recordvideo.RecordVideoActivity"></activity>
         <activity android:name=".view.record.FFmpegRecordActivity"></activity>
         <activity android:name=".view.record.PlaybackActivity" />
-        <activity android:name=".view.recordvideo.RecordVideoActivity2"></activity>
         <activity android:name=".view.record.RecordActivity"></activity>
         <activity android:name=".view.camera.CameraActivity"></activity>
 

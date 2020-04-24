@@ -4,11 +4,11 @@ import android.hardware.Camera;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Environment;
 import android.text.TextUtils;
 
+import com.jqk.pictureselectorlibrary.util.AppConstant;
 import com.jqk.pictureselectorlibrary.util.L;
-import com.jqk.pictureselectorlibrary.view.record.data.FrameToRecord;
-import com.jqk.pictureselectorlibrary.view.record.data.RecordFragment;
 
 import org.bytedeco.javacpp.avcodec;
 import org.bytedeco.javacpp.avutil;
@@ -20,7 +20,9 @@ import org.bytedeco.javacv.FrameFilter;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -30,6 +32,10 @@ import static java.lang.Thread.State.WAITING;
 public class RecordManager {
     private static final int PREFERRED_PREVIEW_WIDTH = 960;
     private static final int PREFERRED_PREVIEW_HEIGHT = 540;
+    public static final int MEDIA_TYPE_IMAGE = 1;
+    public static final int MEDIA_TYPE_VIDEO = 2;
+
+    public static File outputMediaFile;
 
     private static RecordManager mInstance;
 
@@ -77,7 +83,7 @@ public class RecordManager {
 
 
     public void initRecorder(int videoWidth, int videoHeight, int selectedCameraIndex) {
-        mVideo = MediaRecorderManager.getOutputMediaFile(MediaRecorderManager.MEDIA_TYPE_VIDEO);
+        mVideo = RecordManager.getOutputMediaFile(RecordManager.MEDIA_TYPE_VIDEO);
         L.d("Output Video: " + mVideo);
 
         // 旋转之后的屏幕宽高
@@ -250,6 +256,46 @@ public class RecordManager {
             recordedTime += recordFragment.getDuration();
         }
         return recordedTime;
+    }
+
+    public static File getOutputMediaFile(int type) {
+        // To be safe, you should check that the SDCard is mounted
+        // using Environment.getExternalStorageState() before doing this.
+
+        File mediaStorageDir = new File(Environment.getExternalStorageDirectory().getPath() + AppConstant.PATH_VIDEO_CACHE);
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+
+        // Create the storage directory if it does not exist
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                L.d("failed to create directory");
+                return null;
+            }
+        }
+
+        L.d("mediaStorageDir = " + mediaStorageDir.getAbsolutePath());
+
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File mediaFile;
+        if (type == MEDIA_TYPE_IMAGE) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "IMG_" + timeStamp + ".jpg");
+        } else if (type == MEDIA_TYPE_VIDEO) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "VID_" + timeStamp + ".mp4");
+        } else {
+            return null;
+        }
+
+        outputMediaFile = mediaFile;
+
+        return mediaFile;
+    }
+
+    public static File getOutputMediaFile() {
+        return outputMediaFile;
     }
 
     class AudioRecordThread extends RunningThread {

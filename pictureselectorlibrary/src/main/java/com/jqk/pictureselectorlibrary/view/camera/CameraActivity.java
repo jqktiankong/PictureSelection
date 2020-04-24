@@ -1,29 +1,22 @@
 package com.jqk.pictureselectorlibrary.view.camera;
 
-import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.util.L;
-import com.jqk.pictureselectorlibrary.view.recordvideo.CameraManager;
-
-import java.io.IOException;
-import java.util.List;
 
 public class CameraActivity extends AppCompatActivity {
     private SurfaceView surfaceView;
-    private Camera camera;
-
+    private LinearLayout parentView;
     // 相机控制线程
     private CameraHandlerThread mCameraThread;
 
@@ -41,14 +34,13 @@ public class CameraActivity extends AppCompatActivity {
         setContentView(R.layout.activity_camera);
 
         surfaceView = findViewById(R.id.surface_view);
+        parentView = findViewById(R.id.parent_view);
 
         mCameraThread = new CameraHandlerThread();
 
         initCameraInfo();
 
         openCamera(selectedCameraIndex);
-
-
     }
 
     public void initCameraInfo() {
@@ -88,6 +80,16 @@ public class CameraActivity extends AppCompatActivity {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {
 
+                    int parentViewWidth = parentView.getWidth();
+                    int parentViewHeight = parentView.getHeight();
+
+                    L.d("parentViewWidth = " + parentViewWidth);
+                    L.d("parentViewHeight = " + parentViewHeight);
+                    L.d("parentViewWidth / parentViewHeight = " + parentViewWidth / (float) parentViewHeight);
+
+                    CameraManager.getInstance().setSurfaceViewWidth(parentViewWidth);
+                    CameraManager.getInstance().setSurfaceViewHeight(parentViewHeight);
+
                     mCameraThread.openCamera(selectedCameraIndex);
                     mCameraThread.setPreviewSurface(holder);
                 }
@@ -95,10 +97,11 @@ public class CameraActivity extends AppCompatActivity {
                 @Override
                 public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
-                    byte[] bufferByte = new byte[960 * 540 * 3 / 2];
+                    byte[] bufferByte = new byte[CameraManager.getInstance().getPreviewWidth() * CameraManager.getInstance().getPreviewHeight() * 3 / 2];
 
                     mCameraThread.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
                         long time = 0;
+
                         @Override
                         public void onPreviewFrame(byte[] data, Camera camera) {
                             if (time > 0) {

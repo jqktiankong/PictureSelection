@@ -3,12 +3,8 @@ package com.jqk.pictureselectorlibrary.view.recordvideo;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.hardware.Camera;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -23,16 +19,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.jqk.pictureselectorlibrary.R;
 import com.jqk.pictureselectorlibrary.util.L;
-import com.jqk.pictureselectorlibrary.view.camera.CameraHandlerThread;
-
-
-import java.io.IOException;
 
 public class RecordVideoActivity extends AppCompatActivity implements FocusView.OnFocusViewCallback {
-    // both in milliseconds
-    private static final long MIN_VIDEO_LENGTH = 1 * 1000;
-    private static final long MAX_VIDEO_LENGTH = 90 * 1000;
-
     private SurfaceView surfaceView;
     private Button start;
     private Button stop;
@@ -46,7 +34,6 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
     private int selectedCameraIndex = -1;
 
     private int cameraWidth, cameraHeight;
-    private Camera.Size size;
 
     private boolean started = false;
 
@@ -82,7 +69,7 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
                 started = false;
                 RecordManager.getInstance().stopRecord();
                 // 刷新文件管理器
-                Uri localUri = Uri.fromFile(MediaRecorderManager.getOutputMediaFile());
+                Uri localUri = Uri.fromFile(RecordManager.getOutputMediaFile());
                 Intent localIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, localUri);
                 sendBroadcast(localIntent);
 
@@ -126,45 +113,18 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
             surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {
-                    mCameraThread.openCamera(selectedCameraIndex);
-                    mCameraThread.setPreviewSurface(holder);
-
-                    try {
-
-                        SurfaceHolder surfaceHolder = surfaceView.getHolder();
-                        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-
-                        CameraManager.setPreviewDisplay(surfaceHolder);
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
                     int parentViewWidth = parentView.getWidth();
                     int parentViewHeight = parentView.getHeight();
 
+                    L.d("parentViewWidth = " + parentViewWidth);
+                    L.d("parentViewHeight = " + parentViewHeight);
+                    L.d("parentViewWidth / parentViewHeight = " + parentViewWidth / (float) parentViewHeight);
 
-//                    size = CameraManager.getOptimalSize(parentViewHeight, parentViewWidth);
-////                    // 竖屏交换宽高
-//                    int a = size.width;
-//                    int b = size.height;
-//                    size.width = b;
-//                    size.height = a;
-//
-//                    L.d("size.width = " + size.width);
-//                    L.d("size.height = " + size.height);
-//                    // 防止图像变形
-//                    if (parentViewWidth > size.width) {
-//                        parentViewHeight = size.height / size.width * parentViewWidth;
-//                    } else if (parentViewHeight > size.height) {
-//                        parentViewWidth = (int) (((float) size.width) / size.height * parentViewHeight);
-//                    }
+                    CameraManager.getInstance().setSurfaceViewWidth(parentViewWidth);
+                    CameraManager.getInstance().setSurfaceViewHeight(parentViewHeight);
 
-                    L.d("处理后parentViewWidth = " + parentViewWidth);
-                    L.d("处理后parentViewHeight = " + parentViewHeight);
-
-//                    mPreviewWidth = parentViewWidth;
-//                    mPreviewHeight = parentViewHeight;
+                    mCameraThread.openCamera(selectedCameraIndex);
+                    mCameraThread.setPreviewSurface(holder);
 
                     ViewGroup.LayoutParams lp = surfaceView.getLayoutParams();
                     lp.width = parentViewWidth;
@@ -172,7 +132,7 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
 
                     surfaceView.setLayoutParams(lp);
 
-                    RecordManager.getInstance().initRecorder(540, 960, selectedCameraIndex);
+                    RecordManager.getInstance().initRecorder(CameraManager.getInstance().getPreviewHeight(), CameraManager.getInstance().getPreviewWidth(), selectedCameraIndex);
                 }
 
                 @Override
@@ -183,7 +143,7 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
                     L.d("cameraWidth = " + width);
                     L.d("cameraHeight = " + height);
 
-                    byte[] bufferByte = new byte[960 * 540 * 3 / 2];
+                    byte[] bufferByte = new byte[CameraManager.getInstance().getPreviewWidth() * CameraManager.getInstance().getPreviewHeight() * 3 / 2];
 
                     mCameraThread.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
 
@@ -198,7 +158,6 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
 
                 @Override
                 public void surfaceDestroyed(SurfaceHolder holder) {
-                    CameraManager.stopAndRelease();
                     mCameraThread.stopPreview();
                     mCameraThread.releaseCamera();
                 }
@@ -221,7 +180,7 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
                 mCameraThread.releaseCamera();
                 mCameraThread.openCamera(backCameraIndex);
                 mCameraThread.setPreviewSurface(surfaceView.getHolder());
-                byte[] bufferByte = new byte[960 * 540 * 3 / 2];
+                byte[] bufferByte = new byte[CameraManager.getInstance().getPreviewWidth() * CameraManager.getInstance().getPreviewHeight() * 3 / 2];
 
                 mCameraThread.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
 
@@ -244,7 +203,7 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
                 mCameraThread.releaseCamera();
                 mCameraThread.openCamera(fontCameraIndex);
                 mCameraThread.setPreviewSurface(surfaceView.getHolder());
-                byte[] bufferByte = new byte[960 * 540 * 3 / 2];
+                byte[] bufferByte = new byte[CameraManager.getInstance().getPreviewWidth() * CameraManager.getInstance().getPreviewHeight() * 3 / 2];
 
                 mCameraThread.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
 
@@ -291,13 +250,6 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
             return;
         }
     }
-
-//    private void pauseRecording() {
-//        if (mRecording) {
-//            mRecordFragments.peek().setEndTimestamp(System.currentTimeMillis());
-//            mRecording = false;
-//        }
-//    }
 
     @Override
     public void onFocus(Rect rect) {
@@ -385,6 +337,6 @@ public class RecordVideoActivity extends AppCompatActivity implements FocusView.
         L.d("right = " + (right));
         L.d("bottom = " + (bottom));
 
-        CameraManager.setFocus(focusRect);
+        mCameraThread.setFocus(focusRect);
     }
 }

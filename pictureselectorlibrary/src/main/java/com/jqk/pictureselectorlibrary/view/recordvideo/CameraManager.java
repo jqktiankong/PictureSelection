@@ -15,116 +15,157 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CameraManager {
-    private static Camera camera;
+    private static CameraManager mInstance;
 
-    private static int cameraIndex;
+    private Camera mCamera;
+    private int cameraIndex;
 
-    public static Camera getInstance() {
-        return camera;
+    private int surfaceViewWidth;
+    private int surfaceViewHeight;
+
+    private int previewWidth;
+    private int previewHeight;
+
+    /**
+     * 获取单例
+     *
+     * @return
+     */
+    public static CameraManager getInstance() {
+        if (mInstance == null) {
+            mInstance = new CameraManager();
+        }
+        return mInstance;
     }
 
-    public static void open(int index) {
+    private CameraManager() {
+    }
+
+    public int getPreviewWidth() {
+        return previewWidth;
+    }
+
+    public void setPreviewWidth(int previewWidth) {
+        this.previewWidth = previewWidth;
+    }
+
+    public int getPreviewHeight() {
+        return previewHeight;
+    }
+
+    public void setPreviewHeight(int previewHeight) {
+        this.previewHeight = previewHeight;
+    }
+
+    public int getSurfaceViewWidth() {
+        return surfaceViewWidth;
+    }
+
+    public void setSurfaceViewWidth(int surfaceViewWidth) {
+        this.surfaceViewWidth = surfaceViewWidth;
+    }
+
+    public int getSurfaceViewHeight() {
+        return surfaceViewHeight;
+    }
+
+    public void setSurfaceViewHeight(int surfaceViewHeight) {
+        this.surfaceViewHeight = surfaceViewHeight;
+    }
+
+    public void open(int index) {
         cameraIndex = index;
-        camera = Camera.open(index);
-    }
+        mCamera = Camera.open(index);
 
-    public static void setPreviewDisplay(SurfaceHolder surfaceHolder) throws IOException {
-        if (camera != null) {
-            camera.setPreviewDisplay(surfaceHolder);
-        }
-    }
+        Camera.Parameters parameters = mCamera.getParameters();
 
-    public static void setParameters(Camera.Size size) {
-        if (camera != null) {
-            Camera.Parameters parameters = camera.getParameters();
+        if (cameraIndex == Camera.CameraInfo.CAMERA_FACING_FRONT) {
 
-            if (cameraIndex == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-
-            } else if (cameraIndex == Camera.CameraInfo.CAMERA_FACING_BACK) {
-                List<String> focusModes = parameters.getSupportedFocusModes();
-                if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
-                    parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-                }
-            }
-
-            // 由于是旋转前的相机，所以要竖屏宽高要交换
-            parameters.setPreviewSize(960, 540);
-            parameters.setPreviewFormat(ImageFormat.NV21);
-            parameters.setRecordingHint(true);
-            parameters.setPreviewFpsRange(30000, 300000);
-            camera.setDisplayOrientation(90);
-            camera.setParameters(parameters);
-        }
-    }
-
-    public static void setParameters(Camera.Parameters parameters) {
-        if (camera != null) {
-            camera.setParameters(parameters);
-        }
-    }
-
-    public static Camera.Parameters getParameters() {
-        return camera.getParameters();
-    }
-
-    public static void startPreview() {
-        if (camera != null) {
-            camera.startPreview();
-        }
-    }
-
-    public static void stopAndRelease() {
-        if (camera != null) {
-            camera.stopPreview();
-            camera.release();
-            camera = null;
-        }
-    }
-
-    public static Camera.Size getOptimalSize(int w, int h) {
-        Camera.Parameters parameters = CameraManager.getInstance().getParameters();
-        List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
-        for (Camera.Size size : sizes) {
-            L.d("width = " + size.width + "   height = " + size.height);
-        }
-
-        final double ASPECT_TOLERANCE = 0.1;
-        double targetRatio = (double) w / h;
-        Camera.Size optimalSize = null;
-        double minDiff = Double.MAX_VALUE;
-
-        int targetHeight = h;
-
-        for (Camera.Size size : sizes) {
-            double ratio = (double) size.width / size.height;
-            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE) continue;
-            if (Math.abs(size.height - targetHeight) < minDiff) {
-                optimalSize = size;
-                minDiff = Math.abs(size.height - targetHeight);
+        } else if (cameraIndex == Camera.CameraInfo.CAMERA_FACING_BACK) {
+            List<String> focusModes = parameters.getSupportedFocusModes();
+            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
             }
         }
 
-        if (optimalSize == null) {
-            minDiff = Double.MAX_VALUE;
-            for (Camera.Size size : sizes) {
-                if (Math.abs(size.height - targetHeight) < minDiff) {
-                    optimalSize = size;
-                    minDiff = Math.abs(size.height - targetHeight);
-                }
-            }
+
+        int[] maxFps = getFitFps(parameters.getSupportedPreviewFpsRange());
+        Camera.Size size = getFitPreviewSize(parameters.getSupportedPreviewSizes());
+
+
+        if (size != null) {
+            previewWidth = size.width;
+            previewHeight = size.height;
         }
 
-        return optimalSize;
+        L.d("FitPreview width = " + previewWidth + "  FitPreview height = " + previewHeight);
+
+        // 旋转之前的屏幕宽高
+        parameters.setPreviewSize(previewWidth, previewHeight);
+        parameters.setPreviewFormat(ImageFormat.NV21);
+        parameters.setRecordingHint(true);
+        if (maxFps[0] != 0) {
+            parameters.setPreviewFpsRange(maxFps[0], maxFps[1]);
+        } else {
+            parameters.setPreviewFpsRange(30000, 30000);
+        }
+
+        mCamera.setDisplayOrientation(90);
+        mCamera.setParameters(parameters);
+
+    }
+
+    public void setPreviewSurface(SurfaceHolder holder) {
+        if (mCamera != null) {
+            try {
+                mCamera.setPreviewDisplay(holder);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void setPreviewCallbackWithBuffer(Camera.PreviewCallback callback, byte[] previewBuffer) {
+        if (mCamera != null) {
+            mCamera.setPreviewCallbackWithBuffer(callback);
+            mCamera.addCallbackBuffer(previewBuffer);
+        }
+    }
+
+    public void startPreview() {
+        if (mCamera != null) {
+            mCamera.startPreview();
+        }
+    }
+
+    /**
+     * 停止预览
+     */
+    public void stopPreview() {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+        }
+    }
+
+    /**
+     * 释放相机
+     */
+    public void releaseCamera() {
+        if (mCamera != null) {
+            mCamera.setPreviewCallbackWithBuffer(null);
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
     }
 
     @RequiresApi
-    public static void setFocus(Rect rect) {
-
+    public void setFocus(Rect rect) {
         L.d("当前版本 = " + Build.VERSION.SDK_INT);
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
             L.d("开始对焦");
 
-            Camera.Parameters params = CameraManager.getParameters();
+            Camera.Parameters params = mCamera.getParameters();
 
             if (params.getMaxNumMeteringAreas() > 0) { // check that metering areas are supported
                 List<Camera.Area> meteringAreas = new ArrayList<Camera.Area>();
@@ -135,18 +176,80 @@ public class CameraManager {
                 params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
                 params.setFocusAreas(meteringAreas);
             }
-            camera.autoFocus(new Camera.AutoFocusCallback() {
+            mCamera.autoFocus(new Camera.AutoFocusCallback() {
                 @Override
                 public void onAutoFocus(boolean success, Camera camera) {
                     L.d("success = " + success);
                 }
             });
             try {
-                CameraManager.setParameters(params);
+                mCamera.setParameters(params);
             } catch (Exception e) {
                 L.d("e = " + e.toString());
             }
 
         }
+    }
+
+    /**
+     * 取最大的fps
+     *
+     * @param supportedFps
+     * @return
+     */
+    public int[] getFitFps(List<int[]> supportedFps) {
+        int[] result = new int[]{0, 0};
+        for (int[] entry : supportedFps) {
+            L.d("supportedFps entry[0] = " + entry[0] + ", entry[1] = " + entry[1]);
+            if (entry[0] >= result[0] && entry[1] >= result[1]) {
+                result[0] = entry[0];
+                result[1] = entry[1];
+            }
+        }
+
+        L.d("fitFps result[0] = " + result[0] + ", result[1] = " + result[1]);
+
+        return result;
+    }
+
+    /**
+     * 取跟960最接近的size
+     *
+     * @param sizes
+     * @return
+     */
+    public Camera.Size getFitPreviewSize(List<Camera.Size> sizes) {
+        Camera.Size result = null;
+
+        List<Camera.Size> fitSizes = new ArrayList<>();
+
+        if (surfaceViewWidth == 0) {
+            return null;
+        }
+        for (Camera.Size size : sizes) {
+            L.d("width = " + size.width + "   height = " + size.height);
+            if (surfaceViewWidth / (float) surfaceViewHeight == size.height / (float) size.width) {
+                fitSizes.add(size);
+
+                if (size.width == 960) {
+                    return size;
+                }
+            }
+        }
+
+        if (fitSizes.size() != 0) {
+            int index = Math.abs(960 - fitSizes.get(0).width);
+            result = fitSizes.get(0);
+
+            for (Camera.Size size : fitSizes) {
+                int abs = Math.abs(960 - size.width);
+                if (abs <= index) {
+                    index = abs;
+                    result = size;
+                }
+            }
+        }
+
+        return result;
     }
 }
